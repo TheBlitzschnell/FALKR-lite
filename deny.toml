@@ -1,0 +1,47 @@
+# Automates the dependency-licence policy: check the license of every new Cargo dependency
+# BEFORE it lands in Cargo.toml, not after. Run `cargo deny check` locally, and
+# CI runs it on every push.
+
+[graph]
+all-features = true
+
+[licenses]
+version = 2
+# This workspace's own crates are AGPL-3.0 and unpublished; the allowlist below
+# governs third-party dependencies, which must stay permissive.
+private = { ignore = true }
+confidence-threshold = 0.9
+# MIT/Apache-2.0 is the default-safe expectation for this stack. Everything here
+# is permissive; nothing in the GPL/AGPL/LGPL family is allowed without an
+# explicit, deliberate exception below.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "BSL-1.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "CDLA-Permissive-2.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = [
+    # Money is never a float. `bigdecimal` is
+    # not banned for being wrong, but for being a second, competing decimal type:
+    # two money representations in one ledger is how conversion bugs start.
+    { crate = "bigdecimal", reason = "use rust_decimal — one decimal type in this workspace" },
+]
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

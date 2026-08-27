@@ -1,0 +1,52 @@
+[package]
+name = "api"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Axum HTTP layer. One of two crates allowed to wire concrete infra impls to domain traits."
+
+[lib]
+name = "api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "api"
+path = "src/main.rs"
+
+[dependencies]
+falkr-core.workspace = true
+falkr-events.workspace = true
+falkr-ledger.workspace = true
+falkr-research-graph.workspace = true
+# NOTE: the workspace layout's arrow list for `api` does not include cost-spine.
+# Added deliberately for the attribution-coverage endpoint, which surfaces the
+# 80% build gate from §4.1 — an operational metric a dashboard needs over HTTP.
+# the project conventions treats the dependency graph as default-frozen, so this is a
+# considered change, not an incidental one.
+falkr-cost-spine.workspace = true
+falkr-infra.workspace = true
+
+anyhow.workspace = true
+axum.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+falkr-infra = { workspace = true, features = ["test-support"] }
+rust_decimal_macros.workspace = true
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
+[lints]
+workspace = true

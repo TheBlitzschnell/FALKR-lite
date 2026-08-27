@@ -1,0 +1,24 @@
+# Rust build artifacts
+/target
+**/*.rs.bk
+*.pdb
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local database state
+*.sqlite
+*.sqlite3
+pgdata/
+
+# Test artifacts
+**/*.proptest-regressions.local

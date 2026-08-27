@@ -1,0 +1,49 @@
+[package]
+name = "falkr-infra"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Postgres/SQLx/SeaORM adapters, RLS, migrations. Implements traits the domain crates define."
+
+[dependencies]
+# Depends INWARD on the domain crates in order to implement their traits — the
+# dotted "provides impls to" arrow in the workspace layout. Domain crates never
+# depend back on this one.
+falkr-core = { workspace = true, features = ["sqlx"] }
+falkr-events.workspace = true
+falkr-ledger.workspace = true
+falkr-cost-spine.workspace = true
+falkr-research-graph.workspace = true
+
+chrono.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+async-trait.workspace = true
+esrs.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true }
+
+testcontainers = { workspace = true, optional = true }
+testcontainers-modules = { workspace = true, optional = true }
+
+[features]
+default = []
+# Exposes the containerised Postgres fixture so other crates' integration tests
+# can reuse it instead of duplicating container setup. Dev-only; never enabled
+# by the binaries.
+test-support = ["dep:testcontainers", "dep:testcontainers-modules"]
+
+[dev-dependencies]
+falkr-infra = { path = ".", features = ["test-support"] }
+testcontainers.workspace = true
+testcontainers-modules.workspace = true
+rust_decimal_macros.workspace = true
+
+[lints]
+workspace = true

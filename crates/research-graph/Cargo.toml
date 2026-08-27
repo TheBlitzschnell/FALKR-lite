@@ -1,0 +1,27 @@
+[package]
+name = "falkr-research-graph"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Experiment/Run/Job/Checkpoint/Model/Dataset graph and ML-tracker connectors."
+
+[dependencies]
+falkr-core.workspace = true
+falkr-events.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+rust_decimal_macros.workspace = true
+
+[lints]
+workspace = true

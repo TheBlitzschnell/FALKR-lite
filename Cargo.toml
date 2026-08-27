@@ -1,0 +1,77 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/TheBlitzschnell/FALKR-lite"
+authors = ["Sina Sepehr Azar"]
+
+# ---------------------------------------------------------------------------
+# Internal crates. The dependency direction here is inward-only and load-bearing
+# (docs/the workspace layout) — it is machine-checked by scripts/check-deps.sh.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+falkr-core = { path = "crates/core" }
+falkr-events = { path = "crates/events" }
+falkr-ledger = { path = "crates/ledger" }
+falkr-cost-spine = { path = "crates/cost-spine" }
+falkr-research-graph = { path = "crates/research-graph" }
+falkr-infra = { path = "crates/infra" }
+
+# External crates. Licenses verified MIT and/or Apache-2.0.
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+rust_decimal = { version = "1", default-features = false, features = ["std", "serde"] }
+rust_decimal_macros = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v7", "serde"] }
+
+anyhow = "1"
+axum = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = "0.1"
+csv = "1"
+# Event sourcing. Default features pull no sqlx, so
+# `events` stays persistence-free; `infra` enables the `postgres` feature.
+esrs = { version = "0.18", default-features = false }
+sha2 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "macros",
+    "migrate",
+    "uuid",
+    "chrono",
+    "rust_decimal",
+    # cost_events.tags is JSONB. This resolves transitively today; declared
+    # explicitly so a change elsewhere in the tree cannot silently remove it.
+    "json",
+] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# Dev-only.
+proptest = "1"
+testcontainers = "0.24"
+testcontainers-modules = { version = "0.12", features = ["postgres"] }
+
+# ---------------------------------------------------------------------------
+# Lints. the workspace lint policy requires the three clippy denials in ledger/billing/
+# commitments/hr; they are applied workspace-wide instead, since Money math and
+# fallible unwraps are a hazard in every crate, not only those four. Each of
+# those four ALSO carries an explicit crate-root #![deny(...)] so a reader of
+# the file sees the rule without going to Cargo.toml.
+# ---------------------------------------------------------------------------
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+float_arithmetic = "deny"   # the no-float-money rule — no f64/f32 money math, ever
+unwrap_used = "deny"        # our error-handling convention — outside #[cfg(test)]
+expect_used = "deny"        # our error-handling convention — outside #[cfg(test)]

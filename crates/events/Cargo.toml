@@ -1,0 +1,25 @@
+[package]
+name = "falkr-events"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Event definitions, aggregates, CQRS plumbing. Depends only on core."
+
+[dependencies]
+falkr-core.workspace = true
+chrono.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+esrs.workspace = true
+rust_decimal.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+rust_decimal_macros.workspace = true
+
+[lints]
+workspace = true

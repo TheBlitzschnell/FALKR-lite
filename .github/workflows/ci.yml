@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    name: fmt / clippy / build / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      # the workspace lint policy: these run in CI, not just on someone's laptop — a lint that
+      # only fires locally is not enforcing anything.
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: build
+        run: cargo build --workspace
+
+      # --include-ignored runs the testcontainers suites (real Postgres, real
+      # RLS). They are #[ignore] so a laptop without a container runtime stays
+      # green; CI has Docker, so here they are mandatory. our testing policy: RLS is a
+      # Postgres feature and a mocked test of it proves nothing.
+      - name: test
+        run: cargo test --workspace -- --include-ignored
+
+  architecture:
+    name: dependency direction
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      # the workspace layout / the inward-only dependency rule. Prose rules get violated under
+      # deadline; this one is mechanical.
+      - name: inward-only dependency rule
+        run: python3 scripts/check-deps.py
+
+      # Proves the domain layer is genuinely persistence-free rather than
+      # merely not importing sqlx today.
+      - name: domain crates resolve without sqlx
+        run: |
+          set -euo pipefail
+          for c in falkr-core falkr-events falkr-ledger \
+                   falkr-research-graph falkr-cost-spine; do
+            if cargo tree -p "$c" -e normal --prefix none \
+                 | awk '{print $1}' | grep -qxE 'sqlx|sea-orm'; then
+              echo "::error::$c resolves a persistence crate; see the workspace layout"
+              exit 1
+            fi
+          done
+          echo "✓ no domain crate resolves sqlx or sea-orm"
+
+  licenses:
+    name: licenses / advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      # the dependency-licence policy: check the license of every new dependency before it
+      # goes in Cargo.toml, not after. Policy lives in deny.toml.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses bans sources advisories
