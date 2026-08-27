@@ -23,8 +23,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # the workspace lint policy: these run in CI, not just on someone's laptop — a lint that
-      # only fires locally is not enforcing anything.
+      # These run in CI, not just on someone's laptop — a lint that only fires
+      # locally is not enforcing anything.
       - name: rustfmt
         run: cargo fmt --all -- --check
 
@@ -36,8 +36,8 @@ jobs:
 
       # --include-ignored runs the testcontainers suites (real Postgres, real
       # RLS). They are #[ignore] so a laptop without a container runtime stays
-      # green; CI has Docker, so here they are mandatory. our testing policy: RLS is a
-      # Postgres feature and a mocked test of it proves nothing.
+      # green; CI has Docker, so here they are mandatory. RLS is a Postgres
+      # feature, and a mocked test of it proves nothing.
       - name: test
         run: cargo test --workspace -- --include-ignored
 
@@ -48,8 +48,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
 
-      # the workspace layout / the inward-only dependency rule. Prose rules get violated under
-      # deadline; this one is mechanical.
+      # Dependencies point inward only. Prose rules get violated under deadline;
+      # this one is mechanical.
       - name: inward-only dependency rule
         run: python3 scripts/check-deps.py
 
@@ -75,8 +75,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
 
-      # the dependency-licence policy: check the license of every new dependency before it
-      # goes in Cargo.toml, not after. Policy lives in deny.toml.
+      # Check the licence of every new dependency before it goes into Cargo.toml,
+      # not after. Policy lives in deny.toml.
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check licenses bans sources advisories

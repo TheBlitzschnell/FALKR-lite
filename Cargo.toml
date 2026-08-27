@@ -62,16 +62,15 @@ testcontainers = "0.24"
 testcontainers-modules = { version = "0.12", features = ["postgres"] }
 
 # ---------------------------------------------------------------------------
-# Lints. the workspace lint policy requires the three clippy denials in ledger/billing/
-# commitments/hr; they are applied workspace-wide instead, since Money math and
-# fallible unwraps are a hazard in every crate, not only those four. Each of
-# those four ALSO carries an explicit crate-root #![deny(...)] so a reader of
-# the file sees the rule without going to Cargo.toml.
+# Lints. The three clippy denials below are applied workspace-wide rather than
+# only where Money math happens, because a fallible unwrap is a hazard in every
+# crate. Crates that touch money ALSO carry an explicit crate-root
+# #![deny(...)], so a reader sees the rule without coming here.
 # ---------------------------------------------------------------------------
 [workspace.lints.rust]
 unsafe_code = "deny"
 
 [workspace.lints.clippy]
-float_arithmetic = "deny"   # the no-float-money rule — no f64/f32 money math, ever
-unwrap_used = "deny"        # our error-handling convention — outside #[cfg(test)]
-expect_used = "deny"        # our error-handling convention — outside #[cfg(test)]
+float_arithmetic = "deny"   # No f64/f32 money math, ever
+unwrap_used = "deny"        # Outside #[cfg(test)]
+expect_used = "deny"        # Outside #[cfg(test)]
