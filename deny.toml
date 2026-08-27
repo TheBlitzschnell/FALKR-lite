@@ -31,6 +31,12 @@ allow = [
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# Workspace-internal crates are declared as `foo.workspace = true`, which
+# resolves to a path dependency. cargo-deny reads those as wildcard versions and
+# would fail every crate in the workspace. This exempts path dependencies in
+# private (unpublished) crates only — a genuine `version = "*"` on a registry
+# crate is still an error.
+allow-wildcard-paths = true
 deny = [
     # Money is never a float. `bigdecimal` is
     # not banned for being wrong, but for being a second, competing decimal type:

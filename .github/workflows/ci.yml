@@ -73,7 +73,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      # No toolchain step: cargo-deny-action runs in its own container with its
+      # own Rust, and reads Cargo.lock rather than compiling anything.
 
       # Check the licence of every new dependency before it goes into Cargo.toml,
       # not after. Policy lives in deny.toml.

@@ -58,8 +58,8 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 # Dev-only.
 proptest = "1"
-testcontainers = "0.24"
-testcontainers-modules = { version = "0.12", features = ["postgres"] }
+testcontainers = "0.27"
+testcontainers-modules = { version = "0.15", features = ["postgres"] }
 
 # ---------------------------------------------------------------------------
 # Lints. The three clippy denials below are applied workspace-wide rather than
