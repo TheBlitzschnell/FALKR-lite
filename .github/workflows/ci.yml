@@ -14,7 +14,7 @@ jobs:
     name: fmt / clippy / build / test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -45,7 +45,7 @@ jobs:
     name: dependency direction
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
 
       # the workspace layout / the inward-only dependency rule. Prose rules get violated under
@@ -72,7 +72,7 @@ jobs:
     name: licenses / advisories
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
 
       # the dependency-licence policy: check the license of every new dependency before it
