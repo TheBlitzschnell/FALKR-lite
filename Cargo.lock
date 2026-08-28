@@ -61,7 +61,6 @@ dependencies = [
  "falkr-cost-spine",
  "falkr-events",
  "falkr-infra",
- "falkr-ledger",
  "falkr-research-graph",
  "http-body-util",
  "rust_decimal",
@@ -845,7 +844,6 @@ dependencies = [
  "falkr-cost-spine",
  "falkr-events",
  "falkr-infra",
- "falkr-ledger",
  "falkr-research-graph",
  "rust_decimal",
  "rust_decimal_macros",
@@ -857,18 +855,6 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "uuid",
-]
-
-[[package]]
-name = "falkr-ledger"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "falkr-core",
- "falkr-events",
- "rust_decimal",
- "serde",
- "thiserror 2.0.20",
 ]
 
 [[package]]

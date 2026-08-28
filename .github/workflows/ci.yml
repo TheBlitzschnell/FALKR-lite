@@ -5,23 +5,36 @@ on:
     branches: [main, master]
   pull_request:
 
+# A superseded run proves nothing about the tip of the branch, and the
+# testcontainers suites are expensive enough that queueing them behind each
+# other wastes real minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
 
 jobs:
   check:
-    name: fmt / clippy / build / test
+    name: fmt / clippy / build / test / coverage
     runs-on: ubuntu-latest
+    # The number exists so a hung container run dies in the same hour it
+    # started, not after six.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          # llvm-tools-preview is what cargo-llvm-cov instruments with.
+          components: clippy, rustfmt, llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@cargo-llvm-cov
 
       # These run in CI, not just on someone's laptop — a lint that only fires
       # locally is not enforcing anything.
@@ -38,12 +51,38 @@ jobs:
       # RLS). They are #[ignore] so a laptop without a container runtime stays
       # green; CI has Docker, so here they are mandatory. RLS is a Postgres
       # feature, and a mocked test of it proves nothing.
-      - name: test
-        run: cargo test --workspace -- --include-ignored
+      #
+      # Run under llvm-cov rather than as a separate pass: instrumenting the run
+      # we already pay for is free, whereas a second --include-ignored pass would
+      # double the container time. --no-report defers rendering to the step below.
+      - name: test (unit + testcontainers)
+        run: cargo llvm-cov --workspace --no-report -- --include-ignored
+
+      # Doc-tests are not part of `cargo test --workspace` and llvm-cov does not
+      # instrument them. Separate step so a broken doc example is its own failure
+      # rather than hiding inside the main test run.
+      - name: doc tests
+        run: cargo test --workspace --doc
+
+      # Recorded, not gated — a threshold invented today would be a number
+      # nobody chose. This establishes the baseline to raise deliberately.
+      - name: coverage baseline
+        run: |
+          cargo llvm-cov report --summary-only | tee coverage.txt
+          {
+            echo '### Coverage baseline'
+            echo
+            echo '```'
+            cat coverage.txt
+            echo '```'
+            echo
+            echo '_Recorded, not gated._'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   architecture:
     name: dependency direction
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -58,7 +97,7 @@ jobs:
       - name: domain crates resolve without sqlx
         run: |
           set -euo pipefail
-          for c in falkr-core falkr-events falkr-ledger \
+          for c in falkr-core falkr-events \
                    falkr-research-graph falkr-cost-spine; do
             if cargo tree -p "$c" -e normal --prefix none \
                  | awk '{print $1}' | grep -qxE 'sqlx|sea-orm'; then
@@ -71,6 +110,7 @@ jobs:
   licenses:
     name: licenses / advisories
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       # No toolchain step: cargo-deny-action runs in its own container with its

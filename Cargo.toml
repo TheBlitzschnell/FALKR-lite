@@ -12,12 +12,11 @@ authors = ["Sina Sepehr Azar"]
 
 # ---------------------------------------------------------------------------
 # Internal crates. The dependency direction here is inward-only and load-bearing
-# (docs/the workspace layout) — it is machine-checked by scripts/check-deps.sh.
+# (see the workspace layout in README.md) — machine-checked by scripts/check-deps.py.
 # ---------------------------------------------------------------------------
 [workspace.dependencies]
 falkr-core = { path = "crates/core" }
 falkr-events = { path = "crates/events" }
-falkr-ledger = { path = "crates/ledger" }
 falkr-cost-spine = { path = "crates/cost-spine" }
 falkr-research-graph = { path = "crates/research-graph" }
 falkr-infra = { path = "crates/infra" }

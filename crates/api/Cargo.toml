@@ -19,7 +19,6 @@ path = "src/main.rs"
 [dependencies]
 falkr-core.workspace = true
 falkr-events.workspace = true
-falkr-ledger.workspace = true
 falkr-research-graph.workspace = true
 # NOTE: the workspace layout's arrow list for `api` does not include cost-spine.
 # Added deliberately for the attribution-coverage endpoint, which surfaces the

@@ -6,7 +6,7 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Postgres/SQLx/SeaORM adapters, RLS, migrations. Implements traits the domain crates define."
+description = "Postgres/SQLx adapters, RLS, migrations. Implements traits the domain crates define."
 
 [dependencies]
 # Depends INWARD on the domain crates in order to implement their traits — the
@@ -14,7 +14,6 @@ description = "Postgres/SQLx/SeaORM adapters, RLS, migrations. Implements traits
 # depend back on this one.
 falkr-core = { workspace = true, features = ["sqlx"] }
 falkr-events.workspace = true
-falkr-ledger.workspace = true
 falkr-cost-spine.workspace = true
 falkr-research-graph.workspace = true
 

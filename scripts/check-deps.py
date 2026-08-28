@@ -16,7 +16,6 @@ import sys
 CORE = "falkr-core"
 EVENTS = "falkr-events"
 DOMAIN = {
-    "falkr-ledger",
     "falkr-cost-spine",
     "falkr-research-graph",
 }

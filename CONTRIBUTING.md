@@ -17,7 +17,15 @@ Good places to start:
   W&B one is real and the MLflow one is a mock waiting to be replaced.
 - **Telemetry-based attribution.** The hardest and most valuable one — see the
   module docs in `crates/cost-spine/src/attribution/telemetry.rs`, which name the
-  four things it needs, including an open policy question.
+  four things it needs, including an open policy question. Read
+  [`docs/decisions/0003`](docs/decisions/0003-keep-telemetry-attribution-todo.md)
+  first: decide the weighting policy and open an issue proposing it *before*
+  writing the implementation, because that choice is what makes the numbers mean
+  something.
+
+Decisions that are already settled — and why — live in [`docs/decisions/`](docs/decisions/).
+Read the relevant ADR before proposing to reverse one; each names its own
+reversal criteria.
 
 ## The checks
 
@@ -36,6 +44,10 @@ Integration tests need a container runtime. On Colima:
 ```bash
 export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
 ```
+
+A full run is **100 passed, 0 failed, 0 ignored**. If the `ignored` count is
+above zero, Docker was unreachable and the RLS suites silently did not run —
+that is worse than a failure, because it looks like evidence.
 
 ## Invariants
 

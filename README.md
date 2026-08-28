@@ -138,12 +138,12 @@ Dependencies point **inward only**, and a CI check enforces it mechanically:
    │        infra           │   Postgres, SQLx, RLS, migrations
    └───────────┬────────────┘   (implements the traits below)
                │
-   ┌───────────┴────────────────────────────┐
-   │  ledger · cost-spine · research-graph  │   domain crates
-   └───────────┬────────────────────────────┘   (define traits, no SQL)
+   ┌───────────┴────────────────┐
+   │  cost-spine · research-graph │   domain crates
+   └───────────┬────────────────┘   (define traits, no SQL)
                │
         ┌──────┴───────┐
-        │    events    │   LedgerEvent, aggregates
+        │    events    │   LedgerEvent, the ledger aggregate
         └──────┬───────┘
                │
         ┌──────┴───────┐
@@ -154,6 +154,13 @@ Dependencies point **inward only**, and a CI check enforces it mechanically:
 Domain crates never import `sqlx`. They define traits; `infra` implements them.
 That keeps the ledger provably free of accidental infrastructure coupling and
 makes the domain layer testable without a database.
+
+The ledger aggregate lives in `crates/events/src/ledger.rs`, next to the event
+definitions that drive it; its Postgres store is `crates/infra/src/ledger_store.rs`.
+There is no separate `ledger` crate — an empty placeholder existed and was
+deleted rather than filled in, since two plausible homes for "the ledger" is
+worse than one slightly surprising one. See
+[`docs/decisions/0002`](docs/decisions/0002-delete-empty-ledger-crate.md).
 
 ```bash
 python3 scripts/check-deps.py   # fails the build if an arrow points outward
