@@ -1,0 +1,81 @@
+[meta]
+id             = "close-007-big-r-restatement"
+title          = "Big-R restatement of an issued period"
+standards      = ["ASC 250-10-45-23", "ASC 250-10-50-7", "SAB 99"]
+phase          = "P04"
+difficulty     = 5
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-06"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-31"
+description = "Q1 revenue as originally reported"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "900000.00" },
+    { account = "4000-Revenue", credit = "900000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-05"
+period = "2026-03"
+book = "US_GAAP"
+
+[[operations]]
+kind = "restate"
+date = "2026-06-30"
+period = "2026-03"
+book = "US_GAAP"
+classification = "BIG_R"
+approved_by = "AUDIT_COMMITTEE"
+description = "Revenue recognised on a contract that lacked collectibility at inception"
+amount = "150000.00"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "750000.00"
+"4000-Revenue"                               = "-750000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+150,000.00 of Q1 revenue was recognised on a contract that did not meet the ASC
+606-10-25-1(e) collectibility criterion at inception. The error is material to Q1
+and the previously issued statements can no longer be relied upon, so it is a
+"Big R" restatement: the prior period is **restated**, not adjusted in the
+current period.
+
+  Q1 as originally reported      900,000.00
+  Error                          150,000.00
+  Q1 as restated                 750,000.00
+
+The trial balance for Q1 is therefore 750,000.00, as if the erroneous entry had
+never been made. That is what distinguishes Big R from little r (close-008),
+where the correction lands in the current period and the prior period's reported
+figures stand.
+
+Three things must survive in the record, and none of them is a number:
+
+  - the original entry, unaltered, because the ledger is append-only and the fact
+    that 900,000.00 was once reported is itself material;
+  - the restatement entry, classified `BIG_R`, with the audit committee's
+    approval;
+  - the materiality assessment that made it Big R rather than little r.
+
+Materiality here is a SAB 99 analysis, not a percentage: 150,000.00 is 17% of
+reported quarterly revenue and it reverses the revenue trend, which is
+qualitatively material regardless of the percentage.
+
+Deferred to P04.
+"""

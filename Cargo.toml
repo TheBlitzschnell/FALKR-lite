@@ -20,6 +20,9 @@ falkr-events = { path = "crates/events" }
 falkr-cost-spine = { path = "crates/cost-spine" }
 falkr-research-graph = { path = "crates/research-graph" }
 falkr-infra = { path = "crates/infra" }
+# Dev-only. Nothing may depend on it outside [dev-dependencies] — enforced by
+# scripts/check-deps.py.
+falkr-testkit = { path = "crates/testkit" }
 
 # External crates. Licenses verified MIT and/or Apache-2.0.
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
@@ -54,6 +57,10 @@ sqlx = { version = "0.8", default-features = false, features = [
     "json",
 ] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+# The golden-ledger corpus is TOML. MIT OR Apache-2.0. Parsing only happens in a
+# dev crate, but the dependency is declared here so cargo-deny and
+# check-deps.py see it like any other.
+toml = "0.9"
 
 # Dev-only.
 proptest = "1"

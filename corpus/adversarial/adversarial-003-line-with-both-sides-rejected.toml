@@ -1,0 +1,68 @@
+[meta]
+id             = "adversarial-003-line-with-both-sides-rejected"
+title          = "A line carrying both a debit and a credit is refused"
+standards      = ["ASC 105-10-05-1"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Valid sale"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "900.00" },
+    { account = "4000-Revenue", credit = "900.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Line carrying both sides"
+source = "MANUAL"
+expect_rejection = true
+lines = [
+    { account = "1000-Cash", debit = "300.00", credit = "300.00" },
+    { account = "4000-Revenue", credit = "300.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "900.00"
+"4000-Revenue"                               = "-900.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A line with both a debit and a credit is ambiguous, and ambiguity in a ledger
+resolves into whatever the implementation happens to do first.
+
+Three plausible readings of the malformed line, all defensible and all different:
+
+  - net to zero, so the line has no effect;
+  - take the debit and ignore the credit;
+  - take the credit and ignore the debit.
+
+`JournalLine::validate` refuses rather than choosing, which is the only answer
+that does not silently encode one of the three.
+
+  Accepted   cash +900.00, revenue -900.00
+  Rejected   the malformed entry contributes nothing
+
+`JournalLine` models the two sides as `Option<Money>` each rather than as a signed
+amount, so "exactly one side" is a runtime check rather than a type-level
+guarantee. That is a deliberate trade: two `Option`s match how an accountant reads
+an entry and how the schema stores it, at the cost of one validation. The
+validation is what this scenario tests.
+"""

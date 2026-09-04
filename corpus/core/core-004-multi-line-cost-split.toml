@@ -1,0 +1,60 @@
+[meta]
+id             = "core-004-multi-line-cost-split"
+title          = "One compute invoice split across three functions"
+standards      = ["ASC 730-10-25-1", "ASC 705-10-05-1"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-02"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-28"
+description = "February GPU cloud invoice, split by function code"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "4500.00" },
+    { account = "6100-Research and Development", debit = "2700.00" },
+    { account = "6300-General and Administrative", debit = "1800.00" },
+    { account = "2000-Accounts Payable", credit = "9000.00" },
+]
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-9000.00"
+"5000-Cost of Revenue - Inference Compute"   = "4500.00"
+"6100-Research and Development"              = "2700.00"
+"6300-General and Administrative"            = "1800.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+One invoice, three functions. This is the entry the whole dimensional spine
+exists to make possible, and the split is decided at write time from the
+attribution data, never re-derived later from the invoice.
+
+The provider bills 9,000.00 for February. Attribution assigns 50% to production
+inference serving customer traffic, 30% to training and experimentation, and 20%
+to internal tooling:
+
+  production inference  9,000.00 x 0.50 = 4,500.00 -> COGS (function code COGS)
+  training / research   9,000.00 x 0.30 = 2,700.00 -> R&D  (ASC 730, expensed)
+  internal tooling      9,000.00 x 0.20 = 1,800.00 -> G&A  (function code OPEX)
+
+The weights are exact tenths, so no rounding remainder arises and the three parts
+sum to the invoice without an allocation rule being needed. A scenario where they
+do not is in adversarial-011.
+
+Function code is what decides whether a dollar of compute lands above or below
+the gross-margin line, so getting this split wrong is not a classification
+nicety — it moves reported gross margin.
+"""

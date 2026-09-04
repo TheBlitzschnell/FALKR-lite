@@ -1,0 +1,59 @@
+[meta]
+id             = "currency-014-three-decimal-currency"
+title          = "Settlement in a three-decimal currency (BHD, KWD)"
+standards      = ["ISO 4217"]
+phase          = "P05"
+difficulty     = 3
+status         = "blocked"
+blocked_reason = """
+`falkr_core::Currency` has no three-decimal member. It enumerates USD, EUR, GBP,
+CHF, JPY, CAD, AUD, SEK, NOK, DKK, SGD and INR, and `Currency::minor_units`
+returns 0 for JPY and 2 for every other member. There is therefore no value of
+`Currency` that can express a Bahraini dinar, a Kuwaiti dinar, an Omani rial or a
+Tunisian dinar, and no way to write this scenario's expected trial balance
+without inventing one.
+
+Adding a currency to the enum is a production change, and the corpus discipline
+forbids making production changes to get a scenario to pass. So this stays
+blocked, and it is the finding: **the corpus is required to cover 0-, 2- and
+3-decimal currencies, and the third is not expressible today.**
+
+What is already covered without it: `allocation::allocate` takes the scale as a
+parameter and is property-tested at scales 0 through 3, so the *rounding* half of
+the three-decimal problem is tested. What is not covered is a `Money` value in a
+three-decimal currency and its settlement rounding, which is where a ledger that
+assumes two decimals actually breaks.
+
+To unblock: add BHD and KWD to `falkr_core::Currency` with `minor_units` of 3,
+add the accounts to `corpus/_reference/accounts.toml`, and promote this scenario
+to `ready`. That is a P03 change, sized in minutes, and the corpus is what found
+it.
+"""
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-04"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Blocked; see `blocked_reason`. The intended scenario, for whoever unblocks it:
+
+A Bahraini customer is invoiced BHD 12,345.678 and settles in full. BHD has three
+minor units, so the settlement amount is exact at three decimal places and
+rounding to two — which is what a ledger that assumes cents will do — loses up to
+0.005 BHD per transaction and produces an amount that no Bahraini bank will
+process.
+
+The expected entries are a receivable of 12,345.678 and its settlement to cash
+for the same figure, with `round_to_minor_units` returning the amount unchanged
+rather than truncating it to 12,345.68.
+"""

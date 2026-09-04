@@ -1,0 +1,61 @@
+[meta]
+id             = "core-013-sub-cent-usage-rating"
+title          = "Sub-cent token rating held at full precision"
+standards      = ["ASC 606-10-55-18"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-06"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "June metered usage, rated at published token prices"
+source = "REV"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "16.7592525" },
+    { account = "4030-Usage Revenue", credit = "7.5000000", sources = ["usage-2026-06-a"] },
+    { account = "4060-Resold Inference Revenue", credit = "9.2592525", sources = ["usage-2026-06-b"] },
+]
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "16.7592525"
+"4030-Usage Revenue"                         = "-7.5000000"
+"4060-Resold Inference Revenue"              = "-9.2592525"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+AI usage pricing is quoted in fractions of a cent per thousand tokens, which
+means the natural unit of a revenue line is smaller than the smallest unit of
+currency. Rounding at the line is wrong; rounding once, at the point where the
+number becomes an invoice, is right.
+
+  First-party inference
+    3,000,000 tokens at 0.0000025 per token   =  7.5000000
+  Resold third-party inference
+    1,234,567 tokens at 0.0000075 per token   =  9.2592525
+                                                -----------
+    Receivable                                   16.7592525
+
+Every amount is exact in decimal: 1,234,567 x 75 = 92,592,525, so the second
+figure is 9.2592525 with no residue at all. The same computation in binary
+floating point gives 9.259252499999999, which rounds to the same cent here and
+will not on some other day — and the day it does not, the difference is
+unexplainable.
+
+The two revenue lines carry `sources`, the usage events they were recognised
+from. That back-reference is written at posting time; reconstructing it later
+from timestamps and amounts is guesswork, and it is the difference between an
+audit that takes an afternoon and one that takes a month.
+"""

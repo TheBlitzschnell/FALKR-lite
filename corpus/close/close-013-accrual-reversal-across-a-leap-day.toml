@@ -1,0 +1,76 @@
+[meta]
+id             = "close-013-accrual-reversal-across-a-leap-day"
+title          = "Accrual and reversal spanning 29 February"
+standards      = ["ASC 450-20-25-2"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2028-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2028-02-29"
+description = "Accrue February compute, 29-day month"
+source = "CLOSE"
+ref = "feb-accrual"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "58000.00" },
+    { account = "2100-Accrued Liabilities", credit = "58000.00" },
+]
+
+[[operations]]
+kind = "reverse_accrual"
+date = "2028-03-01"
+ref = "feb-accrual"
+source = "CLOSE"
+
+[[operations]]
+kind = "post_entry"
+date = "2028-03-09"
+description = "Provider invoice for February"
+source = "AP"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "58000.00" },
+    { account = "2000-Accounts Payable", credit = "58000.00" },
+]
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-58000.00"
+"2100-Accrued Liabilities"                   = "0.00"
+"5000-Cost of Revenue - Inference Compute"   = "58000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Structurally identical to close-001, with the accrual dated 29 February 2028 and
+its reversal dated 1 March.
+
+The accrual is 29 days of usage at 2,000.00 per day = 58,000.00, and the arithmetic
+is the least interesting part. What this scenario exists to catch is a
+period-close implementation that computes the reversal date as "accrual date plus
+one month" or "the same day number in the following month". 29 February plus one
+month is 29 March under one convention and 31 March under another, and 29
+February has no same-day equivalent in March at all.
+
+The correct rule is "the first day of the next *period*", which is a lookup
+against the fiscal calendar and not date arithmetic. Under a 4-4-5 calendar it is
+not the first of a month either, which is why the rule has to consult the
+calendar rather than `chrono`.
+
+  Accrual   58,000.00 in February
+  Reversal  58,000.00 out on the first day of March
+  Invoice   58,000.00 in March
+  Net       one expense, in February, where the usage happened
+
+Deferred to P04.
+"""

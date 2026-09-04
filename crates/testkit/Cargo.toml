@@ -1,0 +1,40 @@
+[package]
+name = "falkr-testkit"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "The golden ledger corpus: scenario format, invariant assertions, deterministic generator, and the AICPA GL audit extract. Dev-only."
+
+[dependencies]
+# Reads the domain, never the other way round. This crate is allowed to depend
+# on any domain crate; nothing may depend on IT outside [dev-dependencies], which
+# scripts/check-deps.py enforces.
+falkr-core.workspace = true
+falkr-events.workspace = true
+
+chrono.workspace = true
+csv.workspace = true
+esrs.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+rust_decimal_macros.workspace = true
+# Invariant 2 (idempotency) is only meaningful against a real database with two
+# concurrent connections, so the suite that tests it reaches for the shared
+# containerised fixture. Dev-only, and only in tests/.
+falkr-infra = { workspace = true, features = ["test-support"] }
+sqlx.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

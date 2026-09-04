@@ -1,0 +1,87 @@
+[meta]
+id             = "currency-013-average-versus-spot-for-income"
+title          = "Average rate for income, closing rate for the balance sheet"
+standards      = ["ASC 830-30-45-3", "ASC 830-30-45-5"]
+phase          = "P05"
+difficulty     = 4
+
+[setup]
+entity         = "UK_SUB"
+book           = "US_GAAP"
+functional_ccy = "GBP"
+period         = "2026-12"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-31"
+description = "Q1 revenue, collected in cash"
+source = "MANUAL"
+lines = [
+    { account = "1030-Cash - GBP Account", debit = "400000.00" },
+    { account = "4000-Revenue", credit = "400000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-12-31"
+description = "Q4 revenue, collected in cash"
+source = "MANUAL"
+lines = [
+    { account = "1030-Cash - GBP Account", debit = "400000.00" },
+    { account = "4000-Revenue", credit = "400000.00" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-12-31"
+pair = "GBP/USD"
+rate = "1.3000"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-12-31"
+pair = "GBP/USD"
+rate = "1.2500"
+rate_type = "AVERAGE"
+
+[[operations]]
+kind = "translate_entity"
+date = "2026-12-31"
+entity = "UK_SUB"
+reporting_currency = "USD"
+source = "FX"
+
+[expected.trial_balance]
+"1030-Cash - GBP Account"                    = "1040000.00"
+"4000-Revenue"                               = "-1000000.00"
+"3300-Cumulative Translation Adjustment"     = "-40000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Two rates, one set of transactions, and the gap between them is the CTA. This
+scenario exists to make the mechanism visible with numbers simple enough that the
+40,000.00 is obviously arithmetic rather than an error.
+
+  Revenue, translated at the average rate   GBP 800,000 x 1.2500 = 1,000,000.00
+  Cash,    translated at the closing rate   GBP 800,000 x 1.3000 = 1,040,000.00
+  CTA plug                                                            40,000.00
+
+The same 800,000 pounds appears on both statements at two different dollar
+amounts, and neither is wrong. ASC 830-30-45-3 uses an average rate for income
+because revenue accrued throughout the year and no single day's rate represents
+it; it uses the closing rate for assets because that is what the cash is worth at
+the reporting date. The difference is definitionally a translation adjustment.
+
+The wrong answer worth naming: translating revenue at the closing rate to make
+the CTA vanish. That reports 1,040,000.00 of revenue for a year in which the
+pound spent most of its time below 1.30, and it makes the income statement a
+function of one day's exchange rate.
+"""

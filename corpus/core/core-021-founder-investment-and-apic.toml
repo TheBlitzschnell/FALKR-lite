@@ -1,0 +1,50 @@
+[meta]
+id             = "core-021-founder-investment-and-apic"
+title          = "Share issuance split between par and paid-in capital"
+standards      = ["ASC 505-10-45-1"]
+phase          = "P02"
+difficulty     = 1
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-01"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-02"
+description = "Seed round: 10,000,000 shares of $0.001 par at $0.20"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "2000000.00" },
+    { account = "3000-Common Stock", credit = "10000.00" },
+    { account = "3100-Additional Paid-In Capital", credit = "1990000.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "2000000.00"
+"3000-Common Stock"                          = "-10000.00"
+"3100-Additional Paid-In Capital"            = "-1990000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Cash raised is split between par value and everything above it. The split has no
+economic meaning and considerable legal meaning, which is why it is recorded
+rather than netted.
+
+  10,000,000 shares at 0.001 par     =    10,000.00 -> common stock
+  10,000,000 shares at 0.199 premium = 1,990,000.00 -> additional paid-in capital
+                                       ------------
+  Cash received                        2,000,000.00
+
+A three-line entry with one debit and two credits, which is the simplest case
+where "debits equal credits" is not the same statement as "the two lines match".
+"""

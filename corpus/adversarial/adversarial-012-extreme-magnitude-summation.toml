@@ -1,0 +1,85 @@
+[meta]
+id             = "adversarial-012-extreme-magnitude-summation"
+title          = "Very large and very small magnitudes across one ledger"
+standards      = ["ASC 105-10-05-1"]
+phase          = "P02"
+difficulty     = 4
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Datacenter capitalisation"
+source = "MANUAL"
+lines = [
+    { account = "1500-Compute Equipment", debit = "50000000000.00" },
+    { account = "2500-Notes Payable", credit = "50000000000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Bank fee"
+source = "MANUAL"
+lines = [
+    { account = "6300-General and Administrative", debit = "0.01" },
+    { account = "1000-Cash", credit = "0.01" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-03"
+description = "Second bank fee"
+source = "MANUAL"
+lines = [
+    { account = "6300-General and Administrative", debit = "0.01" },
+    { account = "1000-Cash", credit = "0.01" },
+]
+
+[expected]
+unusual_balances = ["1000-Cash"]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "-0.02"
+"1500-Compute Equipment"                     = "50000000000.00"
+"2500-Notes Payable"                         = "-50000000000.00"
+"6300-General and Administrative"            = "0.02"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Fifty billion and two cents in the same trial balance — a ratio of 2.5 x 10^12,
+comfortably past the 15-to-17 significant digits an IEEE-754 double carries.
+
+  Compute equipment      50,000,000,000.00
+  Notes payable         -50,000,000,000.00
+  G&A                                 0.02
+  Cash                               -0.02
+                        ------------------
+  Trial balance                       0.00
+
+In floating point, adding 0.01 to 50,000,000,000.00 returns 50,000,000,000.00
+unchanged: the cent is below the representable gap at that magnitude and is
+silently discarded. The trial balance would still be zero, and the cents would
+have vanished — the worst possible outcome, because the ledger balances and is
+wrong.
+
+`rust_decimal` carries 96 bits of mantissa with an explicit scale, so both
+magnitudes are exact and both survive. `clippy::float_arithmetic` is denied
+workspace-wide to keep it that way, and `cargo-deny` bans `bigdecimal` so a second
+decimal type cannot be introduced alongside it.
+
+Cash is declared unusual: it goes to -0.02 because the scenario carries no funding
+entry, and two cents of overdraft is not what is being tested.
+"""

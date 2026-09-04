@@ -1,0 +1,53 @@
+[meta]
+id             = "currency-001-third-currency-purchase"
+title          = "Purchase denominated in a third currency, recorded at spot"
+standards      = ["ASC 830-10-45-17", "ASC 830-20-30-1"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-10"
+description = "EUR 10,000 licence invoice recorded at the 10 March spot rate"
+source = "MANUAL"
+lines = [
+    { account = "6700-Software Subscriptions", debit = "10850.00" },
+    { account = "2000-Accounts Payable", credit = "10850.00" },
+]
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-10850.00"
+"6700-Software Subscriptions"                = "10850.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A USD-functional entity buys in euros. ASC 830-20-30-1 requires the transaction to
+be recorded in the functional currency at the exchange rate in effect on the
+transaction date; there is no such thing as a euro balance sitting in a
+USD-functional ledger.
+
+  EUR 10,000.00 at USD/EUR 1.0850 on 10 March = USD 10,850.00
+
+Both lines are USD. That is the whole point and it is what invariant 5 asserts: a
+transaction is single-currency, and the conversion happens *before* the entry
+exists, at a rate that is recorded, not inside the entry where it would be
+invisible.
+
+The euro-denominated payable is a monetary item, so it is exposed to rate moves
+until it settles. What happens then is currency-003 (period-end remeasurement)
+and currency-005 (realised gain on settlement). Nothing about either belongs in
+this entry.
+"""

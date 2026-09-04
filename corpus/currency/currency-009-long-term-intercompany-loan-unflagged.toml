@@ -1,0 +1,101 @@
+[meta]
+id             = "currency-009-long-term-intercompany-loan-unflagged"
+title          = "Removing the long-term designation is not retrospective"
+standards      = ["ASC 830-20-35-3", "ASC 830-30-45-13"]
+phase          = "P05"
+difficulty     = 5
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-12"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-15"
+description = "Loan to the European subsidiary, EUR 500,000 at 1.0600"
+source = "MANUAL"
+lines = [
+    { account = "1910-Intercompany Loan Receivable", debit = "530000.00" },
+    { account = "1000-Cash", credit = "530000.00" },
+]
+
+[[operations]]
+kind = "flag_long_term_intercompany"
+date = "2026-01-15"
+account = "1910-Intercompany Loan Receivable"
+designation = "LONG_TERM_INVESTMENT"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "EUR/USD"
+rate = "1.1000"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-06-30"
+book = "US_GAAP"
+source = "FX"
+
+[[operations]]
+kind = "flag_long_term_intercompany"
+date = "2026-07-01"
+account = "1910-Intercompany Loan Receivable"
+designation = "NONE"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-12-31"
+pair = "EUR/USD"
+rate = "1.1500"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-12-31"
+book = "US_GAAP"
+source = "FX"
+
+[expected]
+unusual_balances = ["1000-Cash"]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "-530000.00"
+"1910-Intercompany Loan Receivable"          = "575000.00"
+"3300-Cumulative Translation Adjustment"     = "-20000.00"
+"7000-Foreign Exchange Gain or Loss"         = "-25000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The asymmetry that makes this scenario worth writing: when the long-term
+designation is removed, exchange differences from that point forward go to
+income, and the amounts already deferred in CTA **stay in equity**. They are not
+recycled and they are not restated. They are released only on disposal of the
+investment (currency-007).
+
+  15 Jan   EUR 500,000 x 1.0600 = 530,000.00
+  30 Jun   EUR 500,000 x 1.1000 = 550,000.00   +20,000.00 -> CTA (designated)
+  01 Jul   designation removed
+  31 Dec   EUR 500,000 x 1.1500 = 575,000.00   +25,000.00 -> income (not designated)
+
+  CTA                      20,000.00 credit, frozen at the June figure
+  FX gain in income        25,000.00 credit, the post-designation movement
+  Receivable              575,000.00, marked at the current rate throughout
+
+The wrong answers this pins against are (a) sweeping the 20,000.00 out of CTA and
+into income when the designation is dropped, which invents a gain that did not
+occur in the period, and (b) continuing to route the 25,000.00 to CTA because
+"the loan is still to a subsidiary", which understates income.
+
+Cash is again declared unusual for the reason given in currency-008.
+"""

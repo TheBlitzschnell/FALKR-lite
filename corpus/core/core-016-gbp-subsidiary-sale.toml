@@ -1,0 +1,52 @@
+[meta]
+id             = "core-016-gbp-subsidiary-sale"
+title          = "GBP subscription sale in a foreign subsidiary"
+standards      = ["ASC 830-10-45-2"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "UK_SUB"
+book           = "US_GAAP"
+functional_ccy = "GBP"
+period         = "2026-08"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-08-01"
+description = "Annual platform subscription, billed and collected in GBP"
+source = "MANUAL"
+lines = [
+    { account = "1030-Cash - GBP Account", debit = "24000.00" },
+    { account = "4020-Subscription Revenue", credit = "24000.00" },
+]
+
+[expected.trial_balance]
+"1030-Cash - GBP Account"                    = "24000.00"
+"4020-Subscription Revenue"                  = "-24000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A transaction denominated in a subsidiary's own functional currency is not a
+foreign-currency transaction and produces no FX effect at all. ASC 830-10-45-2
+sets functional currency as the currency of the primary economic environment in
+which the entity operates; for the UK subsidiary that is GBP, so a GBP sale is
+simply a sale.
+
+  Debit  cash - GBP account       24,000.00
+  Credit subscription revenue     24,000.00
+
+The FX consequences arrive only at consolidation, when this entity's balances are
+translated into the group's USD reporting currency and the difference lands in
+the cumulative translation adjustment rather than in income. That is
+currency-005; nothing about it belongs in this entry, and putting it here — by
+recording the sale at a USD-converted amount — is the error this scenario pins
+against.
+"""

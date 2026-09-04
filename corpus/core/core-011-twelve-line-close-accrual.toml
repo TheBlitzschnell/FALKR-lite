@@ -1,0 +1,86 @@
+[meta]
+id             = "core-011-twelve-line-close-accrual"
+title          = "Twelve-line month-end accrual"
+standards      = ["ASC 450-20-25-2", "ASC 710-10-25-1"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-04"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-04-30"
+description = "April month-end accrual"
+source = "CLOSE"
+lines = [
+    { account = "6000-Salaries and Wages", debit = "120000.00" },
+    { account = "6010-Payroll Tax Expense", debit = "9180.00" },
+    { account = "6100-Research and Development", debit = "45000.00" },
+    { account = "6200-Sales and Marketing", debit = "22000.00" },
+    { account = "6300-General and Administrative", debit = "18000.00" },
+    { account = "6400-Depreciation Expense", debit = "30000.00" },
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "64000.00" },
+    { account = "2110-Accrued Compensation", credit = "120000.00" },
+    { account = "2130-Payroll Taxes Payable", credit = "9180.00" },
+    { account = "2100-Accrued Liabilities", credit = "85000.00" },
+    { account = "1590-Accumulated Depreciation", credit = "30000.00" },
+    { account = "2000-Accounts Payable", credit = "64000.00" },
+]
+
+[expected.trial_balance]
+"1590-Accumulated Depreciation"              = "-30000.00"
+"2000-Accounts Payable"                      = "-64000.00"
+"2100-Accrued Liabilities"                   = "-85000.00"
+"2110-Accrued Compensation"                  = "-120000.00"
+"2130-Payroll Taxes Payable"                 = "-9180.00"
+"5000-Cost of Revenue - Inference Compute"   = "64000.00"
+"6000-Salaries and Wages"                    = "120000.00"
+"6010-Payroll Tax Expense"                   = "9180.00"
+"6100-Research and Development"              = "45000.00"
+"6200-Sales and Marketing"                   = "22000.00"
+"6300-General and Administrative"            = "18000.00"
+"6400-Depreciation Expense"                  = "30000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A realistic close entry is not two lines. This one is twelve, and it exists to
+prove the balance check holds across a compound entry rather than only across a
+pair — a one-line-at-a-time balance check would pass any of these lines in
+isolation and still let the entry through unbalanced.
+
+  Debits
+    Salaries and wages                       120,000.00
+    Payroll tax expense                        9,180.00   (7.65% FICA on 120,000)
+    Research and development                  45,000.00
+    Sales and marketing                       22,000.00
+    General and administrative                18,000.00
+    Depreciation expense                      30,000.00
+    Cost of revenue - inference compute       64,000.00
+                                             -----------
+                                             308,180.00
+
+  Credits
+    Accrued compensation                     120,000.00
+    Payroll taxes payable                      9,180.00
+    Accrued liabilities                       85,000.00   (45,000 + 22,000 + 18,000)
+    Accumulated depreciation                  30,000.00
+    Accounts payable                          64,000.00
+                                             -----------
+                                             308,180.00
+
+Accumulated depreciation is a contra-asset: its normal balance is a credit, so
+-30,000.00 is its correct side and a positive balance there would be the defect.
+Invariant 4 measures every account against its own normal balance rather than
+against its account class for exactly this case.
+"""

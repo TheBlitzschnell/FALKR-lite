@@ -1,0 +1,66 @@
+[meta]
+id             = "adversarial-001-unbalanced-entry-rejected"
+title          = "An unbalanced entry is refused with no partial state"
+standards      = ["Luca Pacioli, Summa de Arithmetica (1494)", "ASC 105-10-05-1"]
+phase          = "P02"
+difficulty     = 1
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Valid sale"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "1000.00" },
+    { account = "4000-Revenue", credit = "1000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Debits and credits differ by one cent"
+source = "MANUAL"
+expect_rejection = true
+lines = [
+    { account = "1000-Cash", debit = "500.00" },
+    { account = "4000-Revenue", credit = "499.99" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "1000.00"
+"4000-Revenue"                               = "-1000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+One cent out. The entry is refused at the command boundary, and — this is the part
+that matters — **no partial state is written**: the 500.00 debit does not land in
+cash while the credit is rejected.
+
+That property is structural rather than defensive. In the command-event-apply
+shape, a rejected command produces *no events at all*, and events are the only
+thing that changes a balance. There is no code path that could write half an
+entry, because there is no code path that writes anything except by appending an
+event.
+
+  Accepted   cash +1,000.00, revenue -1,000.00
+  Rejected   contributes nothing
+
+The expected trial balance is therefore the first entry alone. A system that
+validated after writing, or that wrote line by line inside a transaction it later
+rolled back, would produce the same visible result today and fail the first time a
+rollback did not happen — which is why the assertion is on the final state and the
+guarantee is in the shape.
+"""

@@ -1,0 +1,72 @@
+[meta]
+id             = "core-003-purchase-and-payment-cycle"
+title          = "Purchase on account, then payment"
+standards      = ["ASC 720-10-25-1"]
+phase          = "P02"
+difficulty     = 1
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-01"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-02"
+description = "Founder capital contribution"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "50000.00" },
+    { account = "3000-Common Stock", credit = "50000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-08"
+description = "Annual observability platform subscription invoiced"
+source = "MANUAL"
+lines = [
+    { account = "6700-Software Subscriptions", debit = "1200.00" },
+    { account = "2000-Accounts Payable", credit = "1200.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-25"
+description = "Vendor payment"
+source = "MANUAL"
+lines = [
+    { account = "2000-Accounts Payable", debit = "1200.00" },
+    { account = "1000-Cash", credit = "1200.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "48800.00"
+"2000-Accounts Payable"                      = "0.00"
+"3000-Common Stock"                          = "-50000.00"
+"6700-Software Subscriptions"                = "1200.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The mirror image of core-002, from the buying side, plus the funding entry that
+makes it well-formed.
+
+The funding entry exists for a reason worth stating once: without it, paying a
+vendor from an unfunded ledger drives cash to -1,200.00, and a credit balance in
+a cash account is what invariant 4 exists to reject. A scenario that needs cash
+must put cash there first. Scenarios throughout this corpus that would otherwise
+overdraw an asset open with a capital contribution for the same reason.
+
+Cash: +50,000.00 - 1,200.00 = 48,800.00.
+Accounts payable: +1,200.00 credited on invoice, -1,200.00 debited on payment,
+ending at 0.00.
+Expense: 1,200.00, recognised when the service period begins, not when paid.
+"""

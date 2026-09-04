@@ -1,0 +1,80 @@
+[meta]
+id             = "core-023-year-close-with-a-loss"
+title          = "Fiscal-year close producing an accumulated deficit"
+standards      = ["ASC 220-10-45-1", "ASC 505-10-45-2"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-12"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Full-year revenue"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "100000.00" },
+    { account = "4000-Revenue", credit = "100000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Full-year research spend, on account"
+source = "MANUAL"
+lines = [
+    { account = "6100-Research and Development", debit = "160000.00" },
+    { account = "2000-Accounts Payable", credit = "160000.00" },
+]
+
+[[operations]]
+kind = "close_year"
+date = "2026-12-31"
+book = "US_GAAP"
+retained_earnings = "3200-Retained Earnings"
+
+[expected]
+unusual_balances = ["3200-Retained Earnings"]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "100000.00"
+"2000-Accounts Payable"                      = "-160000.00"
+"3200-Retained Earnings"                     = "60000.00"
+"4000-Revenue"                               = "0.00"
+"6100-Research and Development"              = "0.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The loss-making counterpart to core-007, and the reason invariant 4 has to be
+configurable per account rather than a blanket "no negative balances" rule.
+
+  Revenue                     100,000.00 credit
+  Research and development    160,000.00 debit
+  ---------------------------------------------
+  Net loss                     60,000.00
+
+Closing debits retained earnings by 60,000.00. Under the debit-positive
+convention that is a *positive* balance of 60,000.00 in an equity account whose
+normal balance is a credit — an accumulated deficit. It is entirely correct, it
+is what nearly every AI company's balance sheet actually looks like, and a rule
+that rejected it would reject the common case.
+
+So retained earnings is declared in `unusual_balances`: not because it is wrong,
+but because the corpus requires that a balance on the wrong side of an account be
+acknowledged deliberately rather than passing unnoticed. A stale declaration —
+one where the balance has since returned to its normal side — is also a failure,
+so the acknowledgement cannot be left behind after it stops being true.
+
+Deferred to P04 for the close itself.
+"""

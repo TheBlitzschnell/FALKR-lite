@@ -1,0 +1,101 @@
+[meta]
+id             = "currency-011-translation-rounding-in-a-zero-decimal-currency"
+title          = "Translating from JPY: rounding at a zero-decimal source"
+standards      = ["ASC 830-30-45-3", "ISO 4217"]
+phase          = "P05"
+difficulty     = 4
+
+[setup]
+entity         = "JP_SUB"
+book           = "US_GAAP"
+functional_ccy = "JPY"
+period         = "2026-06"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-02"
+description = "Japanese subsidiary capitalised"
+source = "MANUAL"
+lines = [
+    { account = "1020-Cash - JPY Account", debit = "150000000" },
+    { account = "3000-Common Stock", credit = "150000000" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Half-year profit"
+source = "MANUAL"
+lines = [
+    { account = "1020-Cash - JPY Account", debit = "30000000" },
+    { account = "4000-Revenue", credit = "30000000" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-01-02"
+pair = "USD/JPY"
+rate = "150.0000"
+rate_type = "HISTORICAL"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "USD/JPY"
+rate = "160.0000"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "USD/JPY"
+rate = "155.0000"
+rate_type = "AVERAGE"
+
+[[operations]]
+kind = "translate_entity"
+date = "2026-06-30"
+entity = "JP_SUB"
+reporting_currency = "USD"
+source = "FX"
+
+[expected]
+unusual_balances = ["3300-Cumulative Translation Adjustment"]
+
+[expected.trial_balance]
+"1020-Cash - JPY Account"                    = "1125000.00"
+"3000-Common Stock"                          = "-1000000.00"
+"4000-Revenue"                               = "-193548.39"
+"3300-Cumulative Translation Adjustment"     = "68548.39"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Translating out of a zero-decimal currency into a two-decimal one is where a
+rounding rule stops being theoretical: the source amounts are whole yen and the
+result has cents that have to be produced by division, and the CTA plug absorbs
+whatever the rounding leaves.
+
+  Cash          180,000,000 JPY / 160.0000 = 1,125,000.00 exactly
+  Common stock  150,000,000 JPY / 150.0000 = 1,000,000.00 exactly
+  Revenue        30,000,000 JPY / 155.0000 =   193,548.3870967...
+                                              rounded to 193,548.39
+
+  CTA plug = 1,125,000.00 - 1,000,000.00 - 193,548.39 = -68,548.39
+
+The revenue figure is the only one that does not divide evenly, and it must be
+rounded exactly once, at the point of translation. Rounding the yen first, or
+carrying the repeating decimal into the CTA and rounding at the end, gives a
+different CTA — small here, cumulative over years, and impossible to explain to
+whoever reconciles equity.
+
+CTA is a *debit* of 68,548.39 in this scenario: the yen weakened from 150 to 160,
+so the dollar value of the net investment fell, and that is a translation loss.
+Account 3300 permits either side for exactly this reason.
+"""

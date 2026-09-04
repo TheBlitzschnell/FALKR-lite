@@ -21,6 +21,9 @@ DOMAIN = {
 }
 INFRA = "falkr-infra"
 BINARIES = {"api"}
+# The golden-ledger corpus. It reads the domain in order to test it, so it is
+# allowed to depend on anything; the constraint runs the other way.
+TESTKIT = "falkr-testkit"
 
 # Persistence libraries that must never be a direct dependency of the domain
 # layer. Domain crates define traits; `infra` implements them.
@@ -88,6 +91,21 @@ def main() -> int:
 
     # infra implements domain traits; it must never depend on the binaries.
     forbid(INFRA, BINARIES, "infra must not depend on the binary crates")
+
+    # Nothing depends on the testkit outside [dev-dependencies].
+    #
+    # `deps_of` filters to kind == None, i.e. normal dependencies only, so a
+    # crate that lists falkr-testkit under [dev-dependencies] passes and one that
+    # lists it under [dependencies] does not. That is the whole rule: the corpus
+    # is a test artifact, and a production crate that reaches for it has either
+    # put test code in a shipped binary or inverted the dependency direction so
+    # that the thing being tested depends on its own tests.
+    for crate in sorted(workspace - {TESTKIT}):
+        forbid(
+            crate,
+            {TESTKIT},
+            "nothing may depend on falkr-testkit outside [dev-dependencies]",
+        )
 
     # Nothing depends on a binary crate.
     for crate in sorted(workspace - BINARIES):

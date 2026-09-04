@@ -1,0 +1,76 @@
+[meta]
+id             = "close-011-gapless-journal-numbering"
+title          = "Journal numbering is gapless across a close"
+standards      = ["PCAOB AS 2401.58", "COSO 2013 Principle 10"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-10"
+description = "First March entry"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "12000.00" },
+    { account = "4000-Revenue", credit = "12000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-20"
+description = "Second March entry"
+source = "MANUAL"
+lines = [
+    { account = "6300-General and Administrative", debit = "3000.00" },
+    { account = "1000-Cash", credit = "3000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-04"
+period = "2026-03"
+book = "US_GAAP"
+assert_numbering = "GAPLESS"
+
+[expected.trial_balance]
+"1000-Cash"                                  = "9000.00"
+"4000-Revenue"                               = "-12000.00"
+"6300-General and Administrative"            = "3000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The accounting content here is trivial on purpose. What is being tested is that
+the close can assert its own journal numbering is gapless, and that a gap is a
+close-blocking condition rather than a report someone reads later.
+
+A gap in journal numbering means one of three things: an entry was deleted (which
+an append-only log makes impossible, and which is why the log is append-only), an
+entry failed after consuming a number, or the numbering is not actually
+sequential. The second is the common one — a transaction that allocates a number
+and then rolls back — and it is why the number must be allocated inside the same
+transaction that commits the entry, not from a sequence that survives a rollback.
+
+  Cash    12,000.00 - 3,000.00 = 9,000.00
+  Revenue                       -12,000.00
+  G&A                             3,000.00
+
+An auditor tests this by requesting the complete journal population and looking
+for missing numbers. Making the close assert it means the answer is known before
+the request arrives, and a gap is investigated in April rather than explained in
+the following February.
+
+Deferred to P04.
+"""

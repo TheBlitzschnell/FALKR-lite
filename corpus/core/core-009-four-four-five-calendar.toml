@@ -1,0 +1,75 @@
+[meta]
+id             = "core-009-four-four-five-calendar"
+title          = "4-4-5 fiscal calendar, four-week period"
+standards      = ["ASC 270-10-45-1"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-P02"
+calendar       = "4-4-5"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-05"
+description = "Annual reserved GPU capacity prepaid, 52 weeks"
+source = "MANUAL"
+lines = [
+    { account = "1410-Prepaid Compute", debit = "91000.00" },
+    { account = "2000-Accounts Payable", credit = "91000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-01"
+description = "Period 1 consumption, 4 weeks"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "7000.00" },
+    { account = "1410-Prepaid Compute", credit = "7000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-01"
+description = "Period 2 consumption, 4 weeks"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "7000.00" },
+    { account = "1410-Prepaid Compute", credit = "7000.00" },
+]
+
+[expected.trial_balance]
+"1410-Prepaid Compute"                       = "77000.00"
+"2000-Accounts Payable"                      = "-91000.00"
+"5000-Cost of Revenue - Inference Compute"   = "14000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A 4-4-5 calendar divides a quarter into periods of four, four and five weeks so
+that every period ends on the same weekday and week-over-week comparisons are
+like-for-like. Its consequence for accounting is that periods are not months and
+do not have equal lengths, so anything amortised "monthly" is wrong by up to 25%
+in any given period.
+
+Amortising per week rather than per period is what makes it come out right:
+
+  91,000.00 over 52 weeks = 1,750.00 per week
+  Period 1  4 weeks x 1,750.00 = 7,000.00
+  Period 2  4 weeks x 1,750.00 = 7,000.00
+  Consumed after two periods     14,000.00
+  Prepaid remaining              77,000.00
+
+A system that divided 91,000.00 by 13 periods would charge 7,000.00 to every
+period including the five-week ones, and would end the year 8,750.00 short.
+"""

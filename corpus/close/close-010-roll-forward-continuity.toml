@@ -1,0 +1,81 @@
+[meta]
+id             = "close-010-roll-forward-continuity"
+title          = "Closing balances become the next period's opening balances"
+standards      = ["ASC 205-10-45-1"]
+phase          = "P04"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-02"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-15"
+description = "January activity"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "85000.00" },
+    { account = "4000-Revenue", credit = "85000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-02-03"
+period = "2026-01"
+book = "US_GAAP"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-14"
+description = "February activity"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "40000.00" },
+    { account = "4000-Revenue", credit = "40000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-03-03"
+period = "2026-02"
+book = "US_GAAP"
+
+[expected.trial_balance]
+"1000-Cash"                                  = "125000.00"
+"4000-Revenue"                               = "-125000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = true
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Invariant 8 stated as a scenario: the closing balance of period N is the opening
+balance of period N+1, for every account and every book, with nothing added and
+nothing dropped.
+
+  January closing    cash 85,000.00, revenue -85,000.00
+  February opening   cash 85,000.00, revenue -85,000.00
+  February activity  cash +40,000.00, revenue -40,000.00
+  February closing   cash 125,000.00, revenue -125,000.00
+
+Trivially true when stated, and the source of a specific class of bug when
+implemented: a roll-forward that iterates the accounts *present in the opening
+period* silently drops an account that existed at close and had no activity, and
+one that iterates the accounts *with activity* silently conjures accounts that
+should not exist. `assertions::assert_roll_forward` takes the union of both
+account sets for exactly this reason, and it is tested against both failure modes
+directly in tests/invariants.rs.
+
+Revenue rolling forward at -125,000.00 rather than resetting is correct here
+because these are two periods inside one fiscal year. Revenue resets only at the
+year close, which is core-007.
+
+Deferred to P04.
+"""

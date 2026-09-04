@@ -1,0 +1,56 @@
+[meta]
+id             = "core-022-opening-balances-from-a-prior-system"
+title          = "Opening balances migrated from a prior system"
+standards      = ["ASC 250-10-45-5"]
+phase          = "P03"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-01"
+
+[[operations]]
+kind = "open_balances"
+date = "2026-01-01"
+source = "IMPORT"
+cash = "125000.00"
+accounts_receivable = "48000.00"
+accounts_payable = "31000.00"
+retained_earnings = "142000.00"
+
+[expected.trial_balance]
+"1000-Cash"                                  = "125000.00"
+"1100-Accounts Receivable"                   = "48000.00"
+"2000-Accounts Payable"                      = "-31000.00"
+"3200-Retained Earnings"                     = "-142000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Every real deployment starts by loading balances from whatever came before, and
+that load is the single highest-risk entry in the system's life: it is large, it
+is manual, and it is never repeated, so nothing else exercises the code path.
+
+  Cash                     125,000.00 debit
+  Accounts receivable       48,000.00 debit
+  Accounts payable          31,000.00 credit
+  Retained earnings        142,000.00 credit
+                          ------------
+  Debits 173,000.00, credits 173,000.00
+
+Retained earnings is the plug, and it must be the plug rather than a figure typed
+in independently: 125,000 + 48,000 - 31,000 = 142,000, and if the number entered
+does not equal that, the opening trial balance does not balance and every
+subsequent period inherits the error.
+
+Deferred to P03, which delivers the opening-balance operation and the rule that
+it may be posted exactly once per entity and book.
+"""

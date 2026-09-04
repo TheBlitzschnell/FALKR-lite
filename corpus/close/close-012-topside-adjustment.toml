@@ -1,0 +1,76 @@
+[meta]
+id             = "close-012-topside-adjustment"
+title          = "Topside adjustment posted above the subledgers"
+standards      = ["PCAOB AS 2401.58", "PCAOB AS 2401.A5"]
+phase          = "P04"
+difficulty     = 4
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-12"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-12-31"
+description = "Consolidated revenue from the subledgers"
+source = "REV"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "4000000.00" },
+    { account = "4000-Revenue", credit = "4000000.00" },
+]
+
+[[operations]]
+kind = "post_close_adjustment"
+date = "2027-01-20"
+period = "2026-12"
+topside = "true"
+approved_by = "CFO"
+description = "Management estimate of an unrecorded rebate obligation"
+amount = "250000.00"
+debit_account = "4900-Sales Returns and Allowances"
+credit_account = "2430-Refund Liability"
+source = "CLOSE"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "4000000.00"
+"2430-Refund Liability"                      = "-250000.00"
+"4000-Revenue"                               = "-4000000.00"
+"4900-Sales Returns and Allowances"          = "250000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A topside adjustment is an entry made at the consolidated or reporting level that
+does not originate in any subledger. It bypasses the AR, AP and revenue
+subsystems entirely, which is precisely why AS 2401 singles it out: it is the
+entry a management override actually uses, because nothing upstream constrains
+it.
+
+  Subledger revenue          4,000,000.00, supported by invoices
+  Topside adjustment           250,000.00, supported by a management estimate
+
+  Net revenue presented      3,750,000.00
+
+The entry is flagged `is_topside` on creation. That flag sits alongside
+`is_post_close_adjustment` in the AS 2401 attribute set, and the reason both are
+required from the first posting rather than added later is that the population an auditor asks for
+is "every topside entry in the year", and a flag added by migration in year three
+cannot classify years one and two.
+
+Note the interaction with invariant 7: after this entry, the revenue subledger no
+longer ties to the revenue accounts, and it should not — a topside adjustment
+deliberately sits above the subledger. What must still tie is accounts receivable
+to the AR aging, which this entry does not touch. A subledger tie test that
+failed here would be testing the wrong thing, which is why the tie is asserted per
+subledger against its own control account rather than as a single global check.
+
+Deferred to P04.
+"""

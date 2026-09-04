@@ -1,0 +1,63 @@
+[meta]
+id             = "adversarial-010-rounding-cascade-hundred-across-three"
+title          = "Allocating 100.00 across three equal parts"
+standards      = ["ASC 606-10-32-31"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-31"
+description = "Bundle price allocated across three obligations"
+source = "REV"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "100.00" },
+    { account = "4020-Subscription Revenue", credit = "33.34" },
+    { account = "4030-Usage Revenue", credit = "33.33" },
+    { account = "4050-Support Revenue", credit = "33.33" },
+]
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "100.00"
+"4020-Subscription Revenue"                  = "-33.34"
+"4030-Usage Revenue"                         = "-33.33"
+"4050-Support Revenue"                       = "-33.33"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+100.00 across three equal weights. Each exact share is 33.333..., which does not
+exist as an amount of money, and rounding each independently gives 33.33 three
+times — 99.99, one cent short of the entry.
+
+The missing cent has to land somewhere, and *where* must be a rule rather than an
+accident:
+
+  Exact share                 33.3333...
+  Truncated toward zero       33.33 each, total 99.99
+  Remainder                    0.01
+  Largest discarded fraction  all three tie at 0.3333...
+  Tie broken by index         the cent goes to the first part
+                              -> 33.34, 33.33, 33.33
+
+`allocation::allocate` implements largest-remainder with ties broken by index, and
+the property that the parts sum to the whole is proptest-driven over arbitrary
+amounts, weights and scales.
+
+The tie-break clause is the part that is easy to omit and impossible to omit
+safely. Without it there are three equally valid answers and the one you get
+depends on iteration order — so the same contract allocated twice can produce
+different revenue by account, and a revenue schedule stops being reproducible.
+"""

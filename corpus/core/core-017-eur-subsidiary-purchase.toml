@@ -1,0 +1,59 @@
+[meta]
+id             = "core-017-eur-subsidiary-purchase"
+title          = "EUR purchase in a euro-functional subsidiary"
+standards      = ["ASC 830-10-45-2"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "EU_SUB"
+book           = "US_GAAP"
+functional_ccy = "EUR"
+period         = "2026-09"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-09-01"
+description = "Capitalisation of the German subsidiary"
+source = "MANUAL"
+lines = [
+    { account = "1010-Cash - EUR Account", debit = "100000.00" },
+    { account = "3000-Common Stock", credit = "100000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-09-14"
+description = "Annual vector database licence"
+source = "MANUAL"
+lines = [
+    { account = "6700-Software Subscriptions", debit = "4800.00" },
+    { account = "1010-Cash - EUR Account", credit = "4800.00" },
+]
+
+[expected.trial_balance]
+"1010-Cash - EUR Account"                    = "95200.00"
+"3000-Common Stock"                          = "-100000.00"
+"6700-Software Subscriptions"                = "4800.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The buying-side counterpart to core-016, and the same principle: within a
+euro-functional entity, a euro transaction carries no FX.
+
+  Capital contribution   cash +100,000.00, common stock -100,000.00
+  Licence purchase       expense +4,800.00, cash -4,800.00
+  Ending cash            100,000.00 - 4,800.00 = 95,200.00
+
+The EUR cash account is currency-restricted in the corpus chart, so this scenario
+also fixes the shape that currency-002 later violates deliberately: a USD line
+posted to account 1010 must be refused, because it would mean an exchange rate
+was applied somewhere without being recorded anywhere.
+"""

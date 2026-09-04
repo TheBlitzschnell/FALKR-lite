@@ -1,0 +1,71 @@
+[meta]
+id             = "adversarial-016-negative-amounts-on-both-sides"
+title          = "An entry of two negative amounts still balances"
+standards      = ["ASC 105-10-05-1"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Original sale"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "20000.00" },
+    { account = "4000-Revenue", credit = "20000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-15"
+description = "Credit memo posted as negative amounts on the original sides"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "-5000.00" },
+    { account = "4000-Revenue", credit = "-5000.00" },
+]
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "15000.00"
+"4000-Revenue"                               = "-15000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Some source systems express a credit memo as a negative invoice: the same line
+structure with negative amounts, rather than the opposite sides with positive
+amounts. Both are arithmetically identical and the ledger must accept both.
+
+  Debits    -5,000.00
+  Credits   -5,000.00
+  Signed sum      0.00 -> balanced
+
+  Receivable  20,000.00 - 5,000.00 = 15,000.00
+  Revenue    -20,000.00 + 5,000.00 = -15,000.00
+
+An implementation that validates by comparing absolute values, or that rejects
+negative amounts outright, breaks on every credit memo arriving from a system that
+uses this convention — which is most of them.
+
+The invariant is stated as *the signed line amounts sum to exactly zero*, not as
+*the sum of debits equals the sum of credits with all amounts positive*. The first
+formulation admits this entry; the second requires a special case, and special
+cases in a balance check are where the check stops being one.
+
+Note what is not being tested: whether posting a credit memo this way is good
+practice. It is not — the opposite-sides form reads better in the GL detail and
+ages correctly in the subledger. But the ledger is not the place to enforce a
+presentation preference by refusing arithmetic that is correct.
+"""

@@ -1,0 +1,60 @@
+[meta]
+id             = "core-005-reversal-of-a-posted-entry"
+title          = "Reversal of a posted entry"
+standards      = ["PCAOB AS 2401.61", "ASC 250-10-45-23"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-05"
+description = "Accrue external counsel fee"
+source = "MANUAL"
+ref = "counsel-accrual"
+lines = [
+    { account = "6300-General and Administrative", debit = "2500.00" },
+    { account = "2000-Accounts Payable", credit = "2500.00" },
+]
+
+[[operations]]
+kind = "reverse_entry"
+ref = "counsel-accrual"
+date = "2026-03-20"
+reason = "Engagement cancelled before any work was performed"
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "0.00"
+"6300-General and Administrative"            = "0.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A reversal is a new posting, not a deletion and not an edit. The original event
+stays in the log untouched and a mirrored entry is appended, so the audit trail
+shows what was recorded and what was undone rather than showing nothing at all.
+That is the difference between a ledger that is merely accurate and one that is
+auditable, and it is why `ledger_events` carries an append-only trigger in
+Postgres rather than a convention about not running UPDATE.
+
+Original: G&A +2,500.00, AP -2,500.00.
+Reversal: G&A -2,500.00, AP +2,500.00.
+
+Both accounts therefore end at exactly 0.00 and both appear in the trial balance,
+because both were posted to. Two entries exist in the log, not zero.
+
+The mirrored lines deliberately do not carry the original's
+`source_usage_event_ids`. Duplicating them would make a query that traces
+recognised revenue back to its usage events return every source event twice.
+"""

@@ -1,0 +1,82 @@
+[meta]
+id             = "currency-004-remeasurement-reverses-next-period"
+title          = "Prior-period remeasurement reverses when the rate moves back"
+standards      = ["ASC 830-20-35-1"]
+phase          = "P05"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-04"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-10"
+description = "EUR 10,000 licence invoice at 1.0850"
+source = "MANUAL"
+lines = [
+    { account = "6700-Software Subscriptions", debit = "10850.00" },
+    { account = "2000-Accounts Payable", credit = "10850.00" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-03-31"
+pair = "EUR/USD"
+rate = "1.1020"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-03-31"
+book = "US_GAAP"
+source = "FX"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-04-30"
+pair = "EUR/USD"
+rate = "1.0790"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-04-30"
+book = "US_GAAP"
+source = "FX"
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-10790.00"
+"6700-Software Subscriptions"                = "10850.00"
+"7000-Foreign Exchange Gain or Loss"         = "-60.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Remeasurement is not cumulative bookkeeping on top of a prior adjustment; each
+period marks the balance to the current rate and books the movement since the
+last one.
+
+  31 March  EUR 10,000 x 1.1020 = 11,020.00   loss  +170.00 (see currency-003)
+  30 April  EUR 10,000 x 1.0790 = 10,790.00   gain  -230.00
+                                               ------------
+  Cumulative FX to date                              -60.00
+
+The April movement is 11,020.00 - 10,790.00 = 230.00 in the entity's favour, and
+because the March loss of 170.00 is already in the account, the cumulative
+position is a net gain of 60.00. That equals the total move from inception:
+10,850.00 - 10,790.00 = 60.00, which is the arithmetic check that the two periods
+compose correctly.
+
+Account 7000 therefore ends with a *credit* balance of 60.00 — a gain — in an
+expense account. That is normal and expected for an FX account, which is why the
+corpus chart permits it rather than requiring every scenario to declare it.
+"""

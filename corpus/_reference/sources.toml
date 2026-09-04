@@ -1,0 +1,64 @@
+# Journal sources, in the AICPA ADS sense: the subsystem an entry came from.
+#
+# `automated = false` is the population AS 2401 asks about first. Recording it
+# on the source rather than deriving it per entry is what makes "show me every
+# manual journal entry over $50,000 posted after period end" a query rather than
+# a project.
+
+[[source]]
+code = "MANUAL"
+description = "Manual journal entry keyed by a human"
+
+[[source]]
+code = "AR"
+description = "Accounts receivable subledger"
+automated = true
+
+[[source]]
+code = "AP"
+description = "Accounts payable subledger"
+automated = true
+
+[[source]]
+code = "REV"
+description = "Revenue recognition engine"
+automated = true
+
+[[source]]
+code = "PAYROLL"
+description = "Payroll provider interface"
+automated = true
+
+[[source]]
+code = "FA"
+description = "Fixed asset and lease subledger"
+automated = true
+
+[[source]]
+code = "TAX"
+description = "Tax determination engine"
+automated = true
+
+[[source]]
+code = "FX"
+description = "Foreign exchange revaluation and translation"
+automated = true
+
+[[source]]
+code = "CLOSE"
+description = "Period close: accruals, reversals, roll-forward"
+automated = true
+
+[[source]]
+code = "CONSOL"
+description = "Consolidation and intercompany elimination"
+automated = true
+
+[[source]]
+code = "IMPORT"
+description = "Bulk import from an external system"
+
+[[source]]
+code = "COST"
+description = "Cost spine: provider billing and usage ingestion"
+automated = true

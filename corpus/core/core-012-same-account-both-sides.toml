@@ -1,0 +1,69 @@
+[meta]
+id             = "core-012-same-account-both-sides"
+title          = "One account debited and credited within a single entry"
+standards      = ["ASC 210-10-45-1"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Invoice 2201 issued"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "2500.00" },
+    { account = "4000-Revenue", credit = "2500.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-19"
+description = "Wire received net of the correspondent bank's fee"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "2500.00" },
+    { account = "1000-Cash", credit = "100.00" },
+    { account = "6300-General and Administrative", debit = "100.00" },
+    { account = "1100-Accounts Receivable", credit = "2500.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "2400.00"
+"1100-Accounts Receivable"                   = "0.00"
+"4000-Revenue"                               = "-2500.00"
+"6300-General and Administrative"            = "100.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A customer wires 2,500.00 and the correspondent bank deducts a 100.00 fee in
+transit, so 2,400.00 lands in the account. The receivable is settled in full —
+the customer paid what they owed — and the fee is the entity's own expense.
+
+Recording it as a single 2,400.00 debit to cash would understate both cash
+receipts and expenses, and would leave 100.00 of the receivable outstanding
+forever. The correct entry touches cash twice, on both sides:
+
+  Debit  cash                          2,500.00   gross receipt
+  Credit cash                            100.00   fee deducted in transit
+  Debit  general and administrative      100.00   the fee, as expense
+  Credit accounts receivable           2,500.00   invoice settled in full
+
+Debits 2,600.00, credits 2,600.00. Cash nets to +2,400.00.
+
+Two properties are being asserted at once: an entry may legitimately touch one
+account on both sides, and the projection must net the two rather than keep the
+last one written.
+"""

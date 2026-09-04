@@ -1,0 +1,62 @@
+[meta]
+id             = "adversarial-002-empty-entry-rejected"
+title          = "An entry with no lines is refused"
+standards      = ["ASC 105-10-05-1"]
+phase          = "P02"
+difficulty     = 1
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Valid sale"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "2500.00" },
+    { account = "4000-Revenue", credit = "2500.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Entry with no lines at all"
+source = "MANUAL"
+expect_rejection = true
+lines = [
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "2500.00"
+"4000-Revenue"                               = "-2500.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+An entry with no lines sums to zero, so a naive balance check passes it. It is
+still malformed, and it must be refused for a reason that is easy to state and
+easy to get wrong: *zero equals zero* is not the same proposition as *debits equal
+credits*.
+
+An empty entry that is accepted consumes a journal number, appears in the
+population an auditor requests, and explains nothing. Worse, it is what a
+partially failed import produces — the header succeeded, the lines did not — so
+accepting it turns a loud failure into a silent one.
+
+  Accepted   cash +2,500.00, revenue -2,500.00
+  Rejected   the empty entry contributes nothing
+
+`assert_balanced` returns a violation for an empty slice rather than `Ok(())` for
+exactly this reason, and it is unit-tested directly, because "the function returns
+Ok for empty input" is the kind of thing that survives review by looking correct.
+"""

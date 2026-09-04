@@ -1,0 +1,82 @@
+[meta]
+id             = "currency-008-long-term-intercompany-loan-flagged"
+title          = "Intercompany loan of a long-term-investment nature: FX to CTA"
+standards      = ["ASC 830-20-35-3", "ASC 830-30-45-13"]
+phase          = "P05"
+difficulty     = 4
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-06"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-15"
+description = "Loan to the European subsidiary, EUR 500,000 at 1.0600"
+source = "MANUAL"
+lines = [
+    { account = "1910-Intercompany Loan Receivable", debit = "530000.00" },
+    { account = "1000-Cash", credit = "530000.00" },
+]
+
+[[operations]]
+kind = "flag_long_term_intercompany"
+date = "2026-01-15"
+account = "1910-Intercompany Loan Receivable"
+designation = "LONG_TERM_INVESTMENT"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "EUR/USD"
+rate = "1.1000"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-06-30"
+book = "US_GAAP"
+source = "FX"
+
+[expected]
+unusual_balances = ["1000-Cash"]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "-530000.00"
+"1910-Intercompany Loan Receivable"          = "550000.00"
+"3300-Cumulative Translation Adjustment"     = "-20000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+An intercompany balance for which settlement is neither planned nor anticipated in
+the foreseeable future is, in substance, part of the net investment in the
+subsidiary. ASC 830-20-35-3 therefore sends its exchange differences to CTA
+instead of to income.
+
+  Loan at 15 January   EUR 500,000 x 1.0600 = 530,000.00
+  Loan at 30 June      EUR 500,000 x 1.1000 = 550,000.00
+  Exchange difference                          20,000.00
+
+Without the designation this 20,000.00 would be an FX gain in the income
+statement. With it, the credit goes to CTA and income is untouched — which is the
+whole reason the designation exists and the whole reason it is an explicit,
+documented act rather than a heuristic about the loan's maturity date.
+
+Cash is deliberately left at -530,000.00 and declared unusual. This scenario is
+scoped to the loan and its designation; adding a funding entry would put a number
+in the trial balance that has nothing to do with what is being tested. The
+declaration is the mechanism the corpus provides for saying "this is a fragment,
+and I know it".
+
+The consequence of *removing* the designation later is currency-009, and it is
+not symmetric.
+"""

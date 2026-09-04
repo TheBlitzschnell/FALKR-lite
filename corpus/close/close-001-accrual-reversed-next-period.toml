@@ -1,0 +1,76 @@
+[meta]
+id             = "close-001-accrual-reversed-next-period"
+title          = "Accrual that auto-reverses in the following period"
+standards      = ["ASC 450-20-25-2"]
+phase          = "P04"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-02"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-31"
+description = "Accrue January compute not yet invoiced"
+source = "CLOSE"
+ref = "jan-accrual"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "42000.00" },
+    { account = "2100-Accrued Liabilities", credit = "42000.00" },
+]
+
+[[operations]]
+kind = "reverse_accrual"
+date = "2026-02-01"
+ref = "jan-accrual"
+source = "CLOSE"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-10"
+description = "Provider invoice for January arrives"
+source = "AP"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "42000.00" },
+    { account = "2000-Accounts Payable", credit = "42000.00" },
+]
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-42000.00"
+"2100-Accrued Liabilities"                   = "0.00"
+"5000-Cost of Revenue - Inference Compute"   = "42000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The standard auto-reversing accrual, and the reason it is the default pattern for
+anything that will be invoiced later.
+
+  31 Jan  accrue        COGS +42,000.00, accrued liabilities -42,000.00
+  01 Feb  auto-reverse  COGS -42,000.00, accrued liabilities +42,000.00
+  10 Feb  invoice       COGS +42,000.00, accounts payable   -42,000.00
+
+January carries the 42,000.00 of expense, which is correct: the compute was
+consumed in January. February carries a reversal and the real invoice, which net
+to zero, so February's income statement is not polluted by January's cost.
+
+The cumulative position is one 42,000.00 expense, one payable, and an accrual
+account back at 0.00.
+
+The reason the reversal is *automatic* and dated the first day of the next period
+is that the alternative — waiting to see whether the invoice matches and then
+adjusting — leaves an accrual on the books that nobody clears when the invoice
+lands under a different vendor code. That is how a stale accrual survives four
+quarters and then gets written off in a lump nobody can explain.
+
+Deferred to P04, which delivers the period close and the auto-reversal rule.
+"""

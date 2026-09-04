@@ -1,0 +1,76 @@
+[meta]
+id             = "close-005-post-close-adjustment"
+title          = "Post-close adjustment into a closed period"
+standards      = ["PCAOB AS 2401.58", "ASC 855-10-25-1"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-31"
+description = "March revenue"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "200000.00" },
+    { account = "4000-Revenue", credit = "200000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-05"
+period = "2026-03"
+book = "US_GAAP"
+
+[[operations]]
+kind = "post_close_adjustment"
+date = "2026-04-18"
+period = "2026-03"
+description = "Auditor-proposed accrual for an unrecorded March liability"
+approved_by = "CONTROLLER"
+amount = "15000.00"
+debit_account = "6800-Professional Fees"
+credit_account = "2100-Accrued Liabilities"
+source = "CLOSE"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "200000.00"
+"2100-Accrued Liabilities"                   = "-15000.00"
+"4000-Revenue"                               = "-200000.00"
+"6800-Professional Fees"                     = "15000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A closed period is not immutable in the sense that nothing can ever land in it —
+auditors propose adjustments after the close and those adjustments belong in the
+period they relate to. It is immutable in the sense that **nothing lands in it
+silently**.
+
+So a post-close adjustment is a distinct, privileged operation that:
+
+  - requires an explicit approver, recorded on the entry;
+  - is flagged `is_post_close_adjustment`, so the population is queryable;
+  - reopens nothing — the period stays closed for every ordinary posting path.
+
+  Adjustment  professional fees +15,000.00, accrued liabilities -15,000.00
+
+The full PCAOB AS 2401 attribute set is required on the entry from creation, and
+this is why: "show me every post-close adjustment over
+X, and who approved each one" is the first question in an AS 2401 journal-entry
+walkthrough, and a flag added by migration later cannot answer it for historical
+periods.
+
+Deferred to P04.
+"""

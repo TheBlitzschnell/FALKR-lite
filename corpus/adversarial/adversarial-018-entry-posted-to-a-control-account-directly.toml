@@ -1,0 +1,71 @@
+[meta]
+id             = "adversarial-018-entry-posted-to-a-control-account-directly"
+title          = "Manual entry posted straight to a subledger control account"
+standards      = ["PCAOB AS 2401.58"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-05"
+description = "Invoice raised through the AR subledger"
+source = "AR"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "60000.00" },
+    { account = "4000-Revenue", credit = "60000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-28"
+description = "Manual journal posted directly to the AR control account"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "9000.00" },
+    { account = "4000-Revenue", credit = "9000.00" },
+]
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "69000.00"
+"4000-Revenue"                               = "-69000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Both entries are valid. The trial balance is zero. The second entry is still a
+control failure, and the reason is invisible in the general ledger.
+
+  Through the subledger        60,000.00
+  Direct to the control account 9,000.00
+  GL control account balance   69,000.00
+  AR aging total               60,000.00
+
+The subledger no longer ties. Invariant 7 catches it — that is the whole point of
+tying a subledger to its control account rather than trusting each separately —
+but only if the aging is computed independently rather than derived from the
+control account, which is the shortcut that makes the check tautological.
+
+The structural remedy is that control accounts are not directly postable: an entry
+whose source is `MANUAL` and whose account is flagged as a subledger control is
+refused, and the legitimate route is a subledger transaction that posts through to
+the GL. The corpus chart already carries the flag — accounts 1100, 2000, 2400 and
+1500 name the subledger they control — so the rule has data to consult when P03
+builds the posting engine.
+
+The source code on the entry is doing real work here. `MANUAL` versus `AR` is the
+difference between an entry a human keyed and one a subsystem generated, and it is
+the first field an auditor filters on. Recording it as a property of the entry,
+from a controlled list, is what makes that filter possible.
+"""

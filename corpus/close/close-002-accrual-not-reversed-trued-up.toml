@@ -1,0 +1,72 @@
+[meta]
+id             = "close-002-accrual-not-reversed-trued-up"
+title          = "Non-reversing accrual, trued up when the invoice differs"
+standards      = ["ASC 450-20-25-2", "ASC 250-10-45-17"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-02"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-31"
+description = "Accrue estimated January legal fees"
+source = "CLOSE"
+ref = "legal-accrual"
+lines = [
+    { account = "6800-Professional Fees", debit = "30000.00" },
+    { account = "2100-Accrued Liabilities", credit = "30000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-14"
+description = "Invoice received for 34,500; true up the estimate"
+source = "AP"
+lines = [
+    { account = "2100-Accrued Liabilities", debit = "30000.00" },
+    { account = "6800-Professional Fees", debit = "4500.00" },
+    { account = "2000-Accounts Payable", credit = "34500.00" },
+]
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-34500.00"
+"2100-Accrued Liabilities"                   = "0.00"
+"6800-Professional Fees"                     = "34500.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The counterpart to close-001. This accrual does *not* auto-reverse; it is settled
+directly against the invoice and the difference is trued up in the period the
+better information arrived.
+
+  Accrued at 31 January        30,000.00
+  Invoiced at 14 February      34,500.00
+  True-up to expense            4,500.00 in February
+
+A change in an accounting estimate is accounted for prospectively (ASC
+250-10-45-17). The January estimate was reasonable on the information available;
+the 4,500.00 is not an error to be restated into January, it is the February
+consequence of learning more.
+
+Which pattern to use is a policy decision per accrual type, and it is not
+arbitrary. Auto-reversal suits a high-volume accrual where the invoice will
+certainly arrive and matching it to the specific accrual is impractical (compute
+usage). Direct settlement suits a low-volume, individually tracked accrual where
+leaving both a reversal and an invoice in the same period would obscure the
+true-up (professional fees). Recording which policy applied is what lets someone
+answer "why does February show 4,500.00 of legal expense" a year later.
+
+Deferred to P04.
+"""

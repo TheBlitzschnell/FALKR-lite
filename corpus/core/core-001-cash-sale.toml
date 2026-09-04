@@ -1,0 +1,50 @@
+[meta]
+id             = "core-001-cash-sale"
+title          = "Cash sale, single debit and credit"
+standards      = ["ASC 606-10-25-1", "ASC 606-10-45-1"]
+phase          = "P02"
+difficulty     = 1
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-01"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-15"
+description = "Cash sale of inference credits consumed same day"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "1000.00" },
+    { account = "4000-Revenue", credit = "1000.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "1000.00"
+"4000-Revenue"                               = "-1000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The smallest complete transaction there is, and the base case every other
+scenario in this category is a variation on.
+
+A single performance obligation is satisfied at a point in time (ASC 606-10-25-1
+identifies the contract; 606-10-45-1 governs the presentation), the customer pays
+at the same moment, so there is no receivable and no contract asset in between.
+Cash increases by the transaction price of 1,000.00 and revenue is recognised for
+the same amount.
+
+Under the debit-positive convention used throughout this corpus, cash carries
++1,000.00 and revenue -1,000.00, and the two sum to zero. That sum being zero is
+not a coincidence to be checked at the end of the period; it is a property of
+every individual entry, which is what invariant 1 asserts.
+"""

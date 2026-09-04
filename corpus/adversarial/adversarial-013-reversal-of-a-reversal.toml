@@ -1,0 +1,75 @@
+[meta]
+id             = "adversarial-013-reversal-of-a-reversal"
+title          = "Reversing a reversal restores the original"
+standards      = ["PCAOB AS 2401.61"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Original accrual"
+source = "MANUAL"
+ref = "original"
+lines = [
+    { account = "6300-General and Administrative", debit = "6000.00" },
+    { account = "2100-Accrued Liabilities", credit = "6000.00" },
+]
+
+[[operations]]
+kind = "reverse_entry"
+ref = "original"
+date = "2026-05-05"
+reason = "Reversed in error"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-06"
+description = "Re-establish the accrual by posting it again"
+source = "MANUAL"
+ref = "reinstated"
+lines = [
+    { account = "6300-General and Administrative", debit = "6000.00" },
+    { account = "2100-Accrued Liabilities", credit = "6000.00" },
+]
+
+[expected.trial_balance]
+"2100-Accrued Liabilities"                   = "-6000.00"
+"6300-General and Administrative"            = "6000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Somebody reverses an entry, then realises the reversal was the mistake. The
+correct remedy is to post the entry again — not to reverse the reversal.
+
+  Entry 1  original accrual        G&A +6,000.00, accrued -6,000.00
+  Entry 2  reversal                G&A -6,000.00, accrued +6,000.00
+  Entry 3  reinstatement           G&A +6,000.00, accrued -6,000.00
+           net                     G&A +6,000.00, accrued -6,000.00
+
+Three entries in the log, one net effect, and a trail that reads in order: this
+was accrued, it was reversed, it was reinstated.
+
+Reversing the reversal would produce the same balances and a much worse record. A
+reversal is a *reference* to the entry it undoes, and a chain of reversals of
+reversals gives an auditor a linked list to walk with no statement anywhere of
+what the current position is. It also makes `is_reversed` ambiguous: an entry
+whose reversal was itself reversed is, in some sense, not reversed — and encoding
+that in a boolean is how a projection starts lying.
+
+Posting a fresh entry keeps every entry's meaning local. This is what
+adversarial-005 refuses the alternative for.
+"""

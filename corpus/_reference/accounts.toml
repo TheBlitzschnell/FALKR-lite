@@ -1,0 +1,694 @@
+# The corpus chart of accounts.
+#
+# Data, not Rust. Every account any scenario may reference lives here; a
+# scenario naming an account that is not in this file fails validation, which is
+# how a typo in an account name becomes a test failure instead of a silently
+# created account.
+#
+# Fields
+#   code                 numeric account number, unique
+#   name                 exact name; scenarios may write "1000-Cash" and the
+#                        name is checked, not merely accepted
+#   kind                 asset | liability | equity | revenue | expense
+#   contra               true if the account carries the opposite side to its
+#                        kind (accumulated depreciation, the CECL allowance)
+#   allow_opposite_sign  overrides the per-kind default in invariant 4
+#   currency             restricts the account to one currency; omit for
+#                        functional-currency accounts
+#   subledger            names the subledger this account is the control
+#                        account for; invariant 7 ties them
+#   intercompany         true if invariant 10 must see it net to zero
+#   fs_caption           the financial-statement line it rolls into
+#
+# Numbering
+#   1xxx assets  2xxx liabilities  3xxx equity  4xxx revenue
+#   5xxx cost of revenue  6xxx operating expense  7xxx other income/expense
+#   8xxx income tax  9xxx elimination and clearing
+
+# ---------------------------------------------------------------------------
+# 1000–1099  Cash and equivalents
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1000"
+name = "Cash"
+kind = "asset"
+fs_caption = "Cash and cash equivalents"
+
+[[account]]
+code = "1010"
+name = "Cash - EUR Account"
+kind = "asset"
+currency = "EUR"
+fs_caption = "Cash and cash equivalents"
+
+[[account]]
+code = "1020"
+name = "Cash - JPY Account"
+kind = "asset"
+currency = "JPY"
+fs_caption = "Cash and cash equivalents"
+
+[[account]]
+code = "1030"
+name = "Cash - GBP Account"
+kind = "asset"
+currency = "GBP"
+fs_caption = "Cash and cash equivalents"
+
+# ---------------------------------------------------------------------------
+# 1100–1299  Receivables and contract assets
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1100"
+name = "Accounts Receivable"
+kind = "asset"
+subledger = "AR"
+fs_caption = "Accounts receivable, net"
+
+[[account]]
+code = "1110"
+name = "Accounts Receivable - EUR"
+kind = "asset"
+currency = "EUR"
+fs_caption = "Accounts receivable, net"
+
+[[account]]
+code = "1150"
+name = "Allowance for Credit Losses"
+kind = "asset"
+contra = true
+fs_caption = "Accounts receivable, net"
+
+[[account]]
+code = "1200"
+name = "Contract Asset"
+kind = "asset"
+fs_caption = "Contract assets"
+
+[[account]]
+code = "1210"
+name = "Unbilled Receivable"
+kind = "asset"
+fs_caption = "Accounts receivable, net"
+
+# ---------------------------------------------------------------------------
+# 1400–1499  Prepaid and other current assets
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1400"
+name = "Prepaid Expenses"
+kind = "asset"
+fs_caption = "Prepaid expenses and other current assets"
+
+[[account]]
+code = "1410"
+name = "Prepaid Compute"
+kind = "asset"
+fs_caption = "Prepaid expenses and other current assets"
+
+[[account]]
+code = "1420"
+name = "Deferred Contract Costs"
+kind = "asset"
+fs_caption = "Prepaid expenses and other current assets"
+
+# ---------------------------------------------------------------------------
+# 1500–1599  Property, plant and equipment
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1500"
+name = "Compute Equipment"
+kind = "asset"
+subledger = "FIXED_ASSETS"
+fs_caption = "Property and equipment, net"
+
+[[account]]
+code = "1510"
+name = "GPU Accelerators"
+kind = "asset"
+fs_caption = "Property and equipment, net"
+
+[[account]]
+code = "1520"
+name = "Server Chassis"
+kind = "asset"
+fs_caption = "Property and equipment, net"
+
+[[account]]
+code = "1530"
+name = "Networking Equipment"
+kind = "asset"
+fs_caption = "Property and equipment, net"
+
+[[account]]
+code = "1540"
+name = "Power and Cooling Infrastructure"
+kind = "asset"
+fs_caption = "Property and equipment, net"
+
+[[account]]
+code = "1590"
+name = "Accumulated Depreciation"
+kind = "asset"
+contra = true
+fs_caption = "Property and equipment, net"
+
+# ---------------------------------------------------------------------------
+# 1600–1699  Right-of-use assets
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1600"
+name = "ROU Asset - Operating"
+kind = "asset"
+fs_caption = "Operating lease right-of-use assets"
+
+[[account]]
+code = "1610"
+name = "ROU Asset - Finance"
+kind = "asset"
+fs_caption = "Finance lease right-of-use assets"
+
+[[account]]
+code = "1690"
+name = "Accumulated Amortization - Finance ROU"
+kind = "asset"
+contra = true
+fs_caption = "Finance lease right-of-use assets"
+
+# ---------------------------------------------------------------------------
+# 1700–1899  Intangibles, investments, goodwill
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1700"
+name = "Capitalized Internal-Use Software"
+kind = "asset"
+fs_caption = "Intangible assets, net"
+
+[[account]]
+code = "1790"
+name = "Accumulated Amortization - Software"
+kind = "asset"
+contra = true
+fs_caption = "Intangible assets, net"
+
+[[account]]
+code = "1800"
+name = "Investment in Subsidiary"
+kind = "asset"
+intercompany = true
+fs_caption = "Investments"
+
+[[account]]
+code = "1810"
+name = "Equity Method Investment"
+kind = "asset"
+fs_caption = "Investments"
+
+[[account]]
+code = "1850"
+name = "Goodwill"
+kind = "asset"
+fs_caption = "Goodwill"
+
+# ---------------------------------------------------------------------------
+# 1900–1999  Intercompany and deferred tax assets
+# ---------------------------------------------------------------------------
+[[account]]
+code = "1900"
+name = "Intercompany Receivable"
+kind = "asset"
+intercompany = true
+allow_opposite_sign = true
+fs_caption = "Intercompany"
+
+[[account]]
+code = "1910"
+name = "Intercompany Loan Receivable"
+kind = "asset"
+intercompany = true
+allow_opposite_sign = true
+fs_caption = "Intercompany"
+
+[[account]]
+code = "1950"
+name = "Deferred Tax Asset"
+kind = "asset"
+fs_caption = "Deferred income taxes"
+
+# ---------------------------------------------------------------------------
+# 2000–2199  Payables and accruals
+# ---------------------------------------------------------------------------
+[[account]]
+code = "2000"
+name = "Accounts Payable"
+kind = "liability"
+subledger = "AP"
+fs_caption = "Accounts payable"
+
+[[account]]
+code = "2010"
+name = "Goods Received Not Invoiced"
+kind = "liability"
+fs_caption = "Accrued liabilities"
+
+[[account]]
+code = "2100"
+name = "Accrued Liabilities"
+kind = "liability"
+fs_caption = "Accrued liabilities"
+
+[[account]]
+code = "2110"
+name = "Accrued Compensation"
+kind = "liability"
+fs_caption = "Accrued compensation"
+
+[[account]]
+code = "2120"
+name = "Accrued Bonus"
+kind = "liability"
+fs_caption = "Accrued compensation"
+
+[[account]]
+code = "2130"
+name = "Payroll Taxes Payable"
+kind = "liability"
+fs_caption = "Accrued compensation"
+
+[[account]]
+code = "2140"
+name = "Employee Withholdings Payable"
+kind = "liability"
+fs_caption = "Accrued compensation"
+
+# ---------------------------------------------------------------------------
+# 2200–2299  Tax liabilities
+# ---------------------------------------------------------------------------
+[[account]]
+code = "2200"
+name = "Sales Tax Payable"
+kind = "liability"
+fs_caption = "Accrued liabilities"
+
+[[account]]
+code = "2210"
+name = "VAT Payable"
+kind = "liability"
+fs_caption = "Accrued liabilities"
+
+[[account]]
+code = "2220"
+name = "VAT Receivable"
+kind = "asset"
+fs_caption = "Prepaid expenses and other current assets"
+
+[[account]]
+code = "2230"
+name = "Withholding Tax Receivable"
+kind = "asset"
+fs_caption = "Prepaid expenses and other current assets"
+
+[[account]]
+code = "2240"
+name = "Income Tax Payable"
+kind = "liability"
+fs_caption = "Accrued liabilities"
+
+# ---------------------------------------------------------------------------
+# 2300–2399  Lease liabilities
+# ---------------------------------------------------------------------------
+[[account]]
+code = "2300"
+name = "Lease Liability - Operating"
+kind = "liability"
+fs_caption = "Operating lease liabilities"
+
+[[account]]
+code = "2310"
+name = "Lease Liability - Finance"
+kind = "liability"
+fs_caption = "Finance lease liabilities"
+
+# ---------------------------------------------------------------------------
+# 2400–2499  Deferred revenue and customer credits
+# ---------------------------------------------------------------------------
+[[account]]
+code = "2400"
+name = "Deferred Revenue"
+kind = "liability"
+subledger = "DEFERRED_REVENUE"
+fs_caption = "Deferred revenue"
+
+[[account]]
+code = "2410"
+name = "Customer Credit Liability"
+kind = "liability"
+fs_caption = "Deferred revenue"
+
+[[account]]
+code = "2420"
+name = "Material Right Liability"
+kind = "liability"
+fs_caption = "Deferred revenue"
+
+[[account]]
+code = "2430"
+name = "Refund Liability"
+kind = "liability"
+fs_caption = "Accrued liabilities"
+
+# ---------------------------------------------------------------------------
+# 2500–2799  Debt, intercompany, deferred tax
+# ---------------------------------------------------------------------------
+[[account]]
+code = "2500"
+name = "Notes Payable"
+kind = "liability"
+fs_caption = "Long-term debt"
+
+[[account]]
+code = "2600"
+name = "Intercompany Payable"
+kind = "liability"
+intercompany = true
+allow_opposite_sign = true
+fs_caption = "Intercompany"
+
+[[account]]
+code = "2610"
+name = "Intercompany Loan Payable"
+kind = "liability"
+intercompany = true
+allow_opposite_sign = true
+fs_caption = "Intercompany"
+
+[[account]]
+code = "2700"
+name = "Deferred Tax Liability"
+kind = "liability"
+fs_caption = "Deferred income taxes"
+
+# ---------------------------------------------------------------------------
+# 2800–2899  Share-based compensation liabilities
+# ---------------------------------------------------------------------------
+[[account]]
+code = "2800"
+name = "Share-Based Compensation Liability"
+kind = "liability"
+fs_caption = "Accrued compensation"
+
+# ---------------------------------------------------------------------------
+# 3000–3999  Equity
+# ---------------------------------------------------------------------------
+[[account]]
+code = "3000"
+name = "Common Stock"
+kind = "equity"
+fs_caption = "Common stock"
+
+[[account]]
+code = "3100"
+name = "Additional Paid-In Capital"
+kind = "equity"
+fs_caption = "Additional paid-in capital"
+
+[[account]]
+code = "3200"
+name = "Retained Earnings"
+kind = "equity"
+fs_caption = "Retained earnings"
+
+[[account]]
+code = "3300"
+name = "Cumulative Translation Adjustment"
+kind = "equity"
+fs_caption = "Accumulated other comprehensive income"
+
+[[account]]
+code = "3400"
+name = "Non-Controlling Interest"
+kind = "equity"
+fs_caption = "Non-controlling interests"
+
+[[account]]
+code = "3900"
+name = "Opening Balance Equity"
+kind = "equity"
+fs_caption = "Retained earnings"
+
+# ---------------------------------------------------------------------------
+# 4000–4999  Revenue
+# ---------------------------------------------------------------------------
+[[account]]
+code = "4000"
+name = "Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4010"
+name = "Breakage Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4020"
+name = "Subscription Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4030"
+name = "Usage Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4040"
+name = "Implementation Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4050"
+name = "Support Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4060"
+name = "Resold Inference Revenue"
+kind = "revenue"
+fs_caption = "Revenue"
+
+[[account]]
+code = "4900"
+name = "Sales Returns and Allowances"
+kind = "revenue"
+contra = true
+fs_caption = "Revenue"
+
+[[account]]
+code = "4950"
+name = "Intercompany Revenue"
+kind = "revenue"
+intercompany = true
+fs_caption = "Revenue"
+
+# ---------------------------------------------------------------------------
+# 5000–5999  Cost of revenue
+# ---------------------------------------------------------------------------
+[[account]]
+code = "5000"
+name = "Cost of Revenue - Inference Compute"
+kind = "expense"
+fs_caption = "Cost of revenue"
+
+[[account]]
+code = "5010"
+name = "Cost of Revenue - Resold Inference"
+kind = "expense"
+fs_caption = "Cost of revenue"
+
+[[account]]
+code = "5020"
+name = "Cost of Revenue - Hosting"
+kind = "expense"
+fs_caption = "Cost of revenue"
+
+[[account]]
+code = "5030"
+name = "Cost of Revenue - Support"
+kind = "expense"
+fs_caption = "Cost of revenue"
+
+[[account]]
+code = "5900"
+name = "Intercompany Cost of Revenue"
+kind = "expense"
+intercompany = true
+fs_caption = "Cost of revenue"
+
+# ---------------------------------------------------------------------------
+# 6000–6999  Operating expense
+# ---------------------------------------------------------------------------
+[[account]]
+code = "6000"
+name = "Salaries and Wages"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6010"
+name = "Payroll Tax Expense"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6020"
+name = "Bonus Expense"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6030"
+name = "Share-Based Compensation Expense"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6100"
+name = "Research and Development"
+kind = "expense"
+fs_caption = "Research and development"
+
+[[account]]
+code = "6200"
+name = "Sales and Marketing"
+kind = "expense"
+fs_caption = "Sales and marketing"
+
+[[account]]
+code = "6300"
+name = "General and Administrative"
+kind = "expense"
+fs_caption = "General and administrative"
+
+[[account]]
+code = "6400"
+name = "Depreciation Expense"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6410"
+name = "Amortization Expense"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6500"
+name = "Operating Lease Expense"
+kind = "expense"
+fs_caption = "Operating expenses"
+
+[[account]]
+code = "6600"
+name = "Credit Loss Expense"
+kind = "expense"
+fs_caption = "General and administrative"
+
+[[account]]
+code = "6700"
+name = "Software Subscriptions"
+kind = "expense"
+fs_caption = "General and administrative"
+
+[[account]]
+code = "6800"
+name = "Professional Fees"
+kind = "expense"
+fs_caption = "General and administrative"
+
+# ---------------------------------------------------------------------------
+# 7000–7999  Other income and expense
+# ---------------------------------------------------------------------------
+[[account]]
+code = "7000"
+name = "Foreign Exchange Gain or Loss"
+kind = "expense"
+allow_opposite_sign = true
+fs_caption = "Other income (expense), net"
+
+[[account]]
+code = "7010"
+name = "Realized FX Gain or Loss"
+kind = "expense"
+allow_opposite_sign = true
+fs_caption = "Other income (expense), net"
+
+[[account]]
+code = "7100"
+name = "Interest Expense"
+kind = "expense"
+fs_caption = "Other income (expense), net"
+
+[[account]]
+code = "7110"
+name = "Interest Income"
+kind = "revenue"
+fs_caption = "Other income (expense), net"
+
+[[account]]
+code = "7200"
+name = "Gain or Loss on Disposal"
+kind = "expense"
+allow_opposite_sign = true
+fs_caption = "Other income (expense), net"
+
+[[account]]
+code = "7300"
+name = "Impairment Loss"
+kind = "expense"
+fs_caption = "Other income (expense), net"
+
+[[account]]
+code = "7400"
+name = "Equity in Earnings of Investee"
+kind = "revenue"
+allow_opposite_sign = true
+fs_caption = "Other income (expense), net"
+
+# ---------------------------------------------------------------------------
+# 8000–8999  Income tax
+# ---------------------------------------------------------------------------
+[[account]]
+code = "8000"
+name = "Income Tax Expense"
+kind = "expense"
+allow_opposite_sign = true
+fs_caption = "Income tax expense"
+
+# ---------------------------------------------------------------------------
+# 9000–9999  Elimination, clearing and suspense
+# ---------------------------------------------------------------------------
+[[account]]
+code = "9000"
+name = "Consolidation Elimination"
+kind = "equity"
+allow_opposite_sign = true
+fs_caption = "Eliminations"
+
+[[account]]
+code = "9100"
+name = "Suspense"
+kind = "asset"
+allow_opposite_sign = true
+fs_caption = "Prepaid expenses and other current assets"
+
+[[account]]
+code = "9200"
+name = "Import Clearing"
+kind = "asset"
+allow_opposite_sign = true
+fs_caption = "Prepaid expenses and other current assets"

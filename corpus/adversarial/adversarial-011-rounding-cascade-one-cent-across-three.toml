@@ -1,0 +1,60 @@
+[meta]
+id             = "adversarial-011-rounding-cascade-one-cent-across-three"
+title          = "Allocating 0.01 across three parts"
+standards      = ["ASC 606-10-32-31"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-31"
+description = "One cent allocated across three obligations"
+source = "REV"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "0.01" },
+    { account = "4020-Subscription Revenue", credit = "0.01" },
+]
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "0.01"
+"4020-Subscription Revenue"                  = "-0.01"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The degenerate case of adversarial-010, and the one that breaks allocators that
+survive the first.
+
+  Amount                       0.01
+  Weights                      1 : 1 : 1
+  Exact share                  0.00333...
+  Truncated                    0.00 each, total 0.00
+  Remainder                    0.01
+  Distributed to the first     0.01, 0.00, 0.00
+
+Two of the three obligations receive nothing at all. That is correct — there is no
+way to divide a cent three ways — and it is the answer that must be produced
+deterministically rather than being an emergent property of the loop.
+
+The posted entry carries only the non-zero line, because a journal line for 0.00
+is noise: it consumes a line number, appears in the GL detail export, and conveys
+nothing. Whether zero-value allocations are posted is a presentation choice; that
+they sum to the whole is not.
+
+The failure modes this catches: an allocator that returns three 0.00 parts and
+loses the cent; one that returns 0.0033 and posts a fraction of a cent; one that
+distributes the remainder to the *last* part, which is defensible but must then be
+the documented rule everywhere.
+"""

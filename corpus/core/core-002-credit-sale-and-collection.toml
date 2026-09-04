@@ -1,0 +1,62 @@
+[meta]
+id             = "core-002-credit-sale-and-collection"
+title          = "Credit sale, then cash collection"
+standards      = ["ASC 606-10-45-1", "ASC 310-10-05-4"]
+phase          = "P02"
+difficulty     = 1
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-01"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-10"
+description = "Invoice 1001 issued on net-30 terms"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "5000.00" },
+    { account = "4000-Revenue", credit = "5000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-28"
+description = "Cash received against invoice 1001"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "5000.00" },
+    { account = "1100-Accounts Receivable", credit = "5000.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "5000.00"
+"1100-Accounts Receivable"                   = "0.00"
+"4000-Revenue"                               = "-5000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Revenue is recognised when the performance obligation is satisfied, not when cash
+arrives. Those are two different dates here, and the receivable is what bridges
+them: an unconditional right to consideration, so a receivable rather than a
+contract asset (ASC 606-10-45-4 draws that line; nothing here is conditional on
+anything but the passage of time).
+
+Entry 1: AR +5,000.00, revenue -5,000.00.
+Entry 2: cash +5,000.00, AR -5,000.00.
+
+Accounts receivable therefore ends the period at exactly 0.00 — not absent from
+the trial balance, but present with a zero balance, because it was posted to
+twice. That distinction matters: an account that has been used and returned to
+zero is materially different from one that has never been touched, and a trial
+balance that silently drops zero-balance accounts loses the difference.
+"""

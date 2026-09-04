@@ -1,0 +1,52 @@
+[meta]
+id             = "core-015-jpy-zero-decimal-sale"
+title          = "JPY sale in a currency with no minor unit"
+standards      = ["ISO 4217", "ASC 830-10-45-2"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "JP_SUB"
+book           = "US_GAAP"
+functional_ccy = "JPY"
+period         = "2026-08"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-08-12"
+description = "Enterprise inference contract, Japanese subsidiary"
+source = "MANUAL"
+lines = [
+    { account = "1020-Cash - JPY Account", debit = "1250000" },
+    { account = "4000-Revenue", credit = "1250000" },
+]
+
+[expected.trial_balance]
+"1020-Cash - JPY Account"                    = "1250000"
+"4000-Revenue"                               = "-1250000"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The Japanese yen has no minor unit: 1,250,000 JPY is a whole number of yen and
+"1,250,000.00" is not a more precise way of writing it, it is a category error.
+A ledger that assumes two decimal places everywhere will happily produce a
+balance of 1,250,000.33 yen, which is not an amount that can be paid, invoiced or
+reconciled to a bank statement.
+
+  Debit  cash - JPY account   1,250,000
+  Credit revenue              1,250,000
+
+`Currency::minor_units` returns 0 for JPY and 2 for everything else it knows,
+which is what makes `round_to_minor_units` correct here without a special case at
+the call site. The account itself is restricted to JPY in the corpus chart, so
+invariant 5's third clause — every line matches its account's currency — has
+something to check: a USD line posted here would be an unrecorded FX conversion
+hiding inside a posting.
+"""

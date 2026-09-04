@@ -1,0 +1,55 @@
+[meta]
+id             = "core-024-post-by-rule-from-a-cost-event"
+title          = "Posting rule turns a provider cost event into an entry"
+standards      = ["ASC 705-10-05-1"]
+phase          = "P03"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-02"
+
+[[operations]]
+kind = "post_by_rule"
+date = "2026-02-28"
+source = "COST"
+event = "cost-event-2026-02-provider-a"
+amount = "12340.56"
+rule = "inference-compute-to-cogs-v2"
+provider = "PROVIDER_A"
+function_code = "COGS"
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-12340.56"
+"5000-Cost of Revenue - Inference Compute"   = "12340.56"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The path a provider invoice line actually takes: it arrives as a cost event on
+the ingestion side, a posting rule maps it to accounts, and the entry is produced
+without anybody keying it. This is the mechanism, tested on one line so the
+mechanism is what is being tested.
+
+  Cost event   12,340.56, provider A, function code COGS
+  Rule         inference-compute-to-cogs-v2
+  Entry        debit  cost of revenue - inference compute  12,340.56
+               credit accounts payable                      12,340.56
+
+Two properties are load-bearing and neither is visible in the resulting balances,
+which is why they are stated here. The rule version is recorded on the entry, so
+"why is this in COGS" is answerable years later without reconstructing what the
+rules were at the time. And the mapping is idempotent on the provider's external
+ID: polling and webhooks can both deliver this line, and the second delivery must
+produce no second entry.
+
+Deferred to P03, which delivers the posting-rule engine.
+"""

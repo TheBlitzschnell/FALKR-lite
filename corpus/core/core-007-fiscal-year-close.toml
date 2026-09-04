@@ -1,0 +1,81 @@
+[meta]
+id             = "core-007-fiscal-year-close"
+title          = "Fiscal-year close to retained earnings"
+standards      = ["ASC 205-10-45-1", "ASC 220-10-45-1"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-12"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Full-year revenue, collected in cash"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "400000.00" },
+    { account = "4000-Revenue", credit = "400000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Full-year operating costs, paid in cash"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "150000.00" },
+    { account = "6100-Research and Development", debit = "120000.00" },
+    { account = "6300-General and Administrative", debit = "60000.00" },
+    { account = "1000-Cash", credit = "330000.00" },
+]
+
+[[operations]]
+kind = "close_year"
+date = "2026-12-31"
+book = "US_GAAP"
+retained_earnings = "3200-Retained Earnings"
+
+[expected.trial_balance]
+"1000-Cash"                                  = "70000.00"
+"3200-Retained Earnings"                     = "-70000.00"
+"4000-Revenue"                               = "0.00"
+"5000-Cost of Revenue - Inference Compute"   = "0.00"
+"6100-Research and Development"              = "0.00"
+"6300-General and Administrative"            = "0.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Closing the year is the operation that turns temporary accounts into a permanent
+one. Every revenue and expense account is brought to zero and the net is written
+to retained earnings; balance-sheet accounts are untouched.
+
+  Revenue                            400,000.00 credit
+  Cost of revenue                    150,000.00 debit
+  Research and development           120,000.00 debit
+  General and administrative          60,000.00 debit
+  ------------------------------------------------------
+  Net income                          70,000.00
+
+The closing entry debits revenue 400,000.00, credits the three expense accounts
+for 330,000.00 in total, and credits retained earnings for the 70,000.00
+difference. All four income-statement accounts end at 0.00; retained earnings
+ends at -70,000.00 (a credit, its normal side).
+
+Cash is unaffected by the close and ends at 400,000.00 - 330,000.00 = 70,000.00,
+which equals net income here only because every transaction settled in cash in
+the same year. That equality is a property of this deliberately simple scenario,
+not of closing.
+
+Deferred to P04, which delivers the period state machine and the close.
+"""

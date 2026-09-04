@@ -166,6 +166,38 @@ worse than one slightly surprising one. See
 python3 scripts/check-deps.py   # fails the build if an arrow points outward
 ```
 
+`crates/testkit` sits outside that diagram on purpose: it reads every crate in
+order to test them, and nothing may depend on it outside `[dev-dependencies]` —
+which the same check enforces.
+
+### The golden ledger corpus
+
+`corpus/` holds 66 accounting scenarios whose expected numbers were derived **by
+hand, from the standards**, and explained in prose next to them. None of them was
+produced by running this code.
+
+That distinction is the point. A corpus built by recording current behaviour is a
+regression snapshot: it locks in whatever the implementation does today,
+including the parts that are wrong. A corpus derived from the standard is a
+specification — it can tell you the implementation was wrong from the first
+commit, which no test written alongside the code can do.
+
+It has already earned it. The corpus found a double-negation bug in this
+repository's own AICPA audit export, established that `Currency` has no
+three-decimal member (so Bahraini and Kuwaiti dinars cannot be expressed at all),
+and holds three scenarios that record, as failing tests, places where the ledger
+currently disagrees with the standard.
+
+```bash
+cargo test -p falkr-testkit -- --nocapture   # runs it, and prints the backlog
+scripts/corpus-new.sh --list-operations      # the scenario vocabulary
+```
+
+Most of the corpus describes features that do not exist yet. Those scenarios are
+*deferred*, not skipped: their arithmetic, account references and prose are all
+still checked. See [`corpus/README.md`](corpus/README.md) for the format and the
+rule that expected numbers must be derivable in prose.
+
 ### Design decisions worth knowing
 
 <details>
@@ -238,7 +270,8 @@ Early. The foundations — money, dimensions, the ledger, ingestion, tenancy —
 built and tested. The API surface is deliberately small and will grow.
 
 **Issues and PRs welcome.** Good first areas: an additional cloud connector, an
-MLflow tracker, or the telemetry attribution path.
+MLflow tracker, the telemetry attribution path, or a corpus scenario for an
+accounting case the ledger gets wrong.
 
 ## Contributing
 
@@ -246,10 +279,16 @@ MLflow tracker, or the telemetry attribution path.
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace -- --include-ignored
+cargo test -p falkr-testkit            # the golden ledger corpus
 python3 scripts/check-deps.py
 ```
 
-All four must pass. CI runs the same set.
+All five must pass. CI runs the same set.
+
+If you are adding accounting logic, add the corpus scenario **first** and derive
+its expected numbers from the standard by hand. `scripts/corpus-new.sh` scaffolds
+one. Do not compute an expected value by running the code — that is the one
+change that would quietly make the corpus worthless.
 
 ## License
 

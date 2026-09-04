@@ -1,0 +1,72 @@
+[meta]
+id             = "core-019-correcting-entry-by-reversal"
+title          = "Correct a misclassification by reversal and repost"
+standards      = ["ASC 250-10-45-23", "PCAOB AS 2401.61"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-11"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-11-04"
+description = "Contractor invoice, posted to G&A in error"
+source = "MANUAL"
+ref = "misclassified"
+lines = [
+    { account = "6300-General and Administrative", debit = "3400.00" },
+    { account = "2000-Accounts Payable", credit = "3400.00" },
+]
+
+[[operations]]
+kind = "reverse_entry"
+ref = "misclassified"
+date = "2026-11-06"
+reason = "Misclassified: the work was model evaluation, not administration"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-11-06"
+description = "Repost to research and development"
+source = "MANUAL"
+lines = [
+    { account = "6100-Research and Development", debit = "3400.00" },
+    { account = "2000-Accounts Payable", credit = "3400.00" },
+]
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-3400.00"
+"6100-Research and Development"              = "3400.00"
+"6300-General and Administrative"            = "0.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The correct way to fix a misclassification in an append-only ledger: reverse the
+wrong entry, post the right one, leave all three in the log.
+
+  Entry 1  G&A +3,400.00, AP -3,400.00        (wrong)
+  Entry 2  G&A -3,400.00, AP +3,400.00        (reversal)
+  Entry 3  R&D +3,400.00, AP -3,400.00        (right)
+
+  Net: G&A 0.00, R&D +3,400.00, AP -3,400.00
+
+Accounts payable is credited twice and debited once and ends where it started
+after the original entry, which is correct — the vendor is still owed 3,400.00
+and nothing about the liability changed. Only the expense classification did.
+
+The alternative — editing the original line's account — would leave a ledger that
+shows the right answer and no evidence that the wrong one was ever recorded. That
+is precisely the kind of entry AS 2401 tells an auditor to go looking for, and a
+system that makes it impossible is worth more than one that makes it traceable.
+"""

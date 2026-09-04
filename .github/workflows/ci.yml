@@ -47,6 +47,34 @@ jobs:
       - name: build
         run: cargo build --workspace
 
+      # Its own step so the failure is legible in the log rather than buried in a
+      # test run. It is implemented as a test rather than as a script: the same
+      # rule enforced in two places drifts, and the copy that drifts is always the
+      # one nobody runs locally.
+      - name: every corpus scenario documents its reasoning
+        run: cargo test -p falkr-testkit --test corpus -- --exact every_scenario_documents_its_reasoning
+
+      # The golden ledger corpus. Runs before the containerised suites because it
+      # needs no Docker and catches a hand-arithmetic slip in a scenario in under
+      # a second.
+      #
+      # The whole corpus is budgeted at two minutes. Compilation is done first and
+      # excluded from the measurement, so the budget is on execution — which is
+      # the number that grows as scenarios are added.
+      - name: golden ledger corpus
+        run: |
+          set -euo pipefail
+          cargo test -p falkr-testkit --no-run
+          start=$(date +%s)
+          cargo test -p falkr-testkit
+          elapsed=$(( $(date +%s) - start ))
+          echo "corpus suite executed in ${elapsed}s"
+          if [ "$elapsed" -gt 120 ]; then
+            echo "::error::the corpus suite took ${elapsed}s against a 120s budget. \
+          Split the job or parallelise rather than raising this."
+            exit 1
+          fi
+
       # --include-ignored runs the testcontainers suites (real Postgres, real
       # RLS). They are #[ignore] so a laptop without a container runtime stays
       # green; CI has Docker, so here they are mandatory. RLS is a Postgres
@@ -64,19 +92,31 @@ jobs:
       - name: doc tests
         run: cargo test --workspace --doc
 
-      # Recorded, not gated — a threshold invented today would be a number
-      # nobody chose. This establishes the baseline to raise deliberately.
-      - name: coverage baseline
+      # Gated at 60% lines since the corpus landed.
+      #
+      # Where the number comes from: line coverage measured on this workspace
+      # *without* the testcontainers suites, which could not run on the machine
+      # that measured it. CI runs with --include-ignored and therefore covers
+      # strictly more, so 60 is a floor CI is guaranteed to clear rather than a
+      # target anyone tuned to.
+      #
+      # It is deliberately a floor and not an aspiration. A gate set at the exact
+      # current figure fails on the first refactor that moves a line; a gate set
+      # above what is measured is a gate somebody disables the week it fires. The
+      # step prints the actual figure, so raise this number to the last observed
+      # CI value whenever you touch it — and never lower it to make a red build
+      # green.
+      - name: coverage
         run: |
-          cargo llvm-cov report --summary-only | tee coverage.txt
+          cargo llvm-cov report --summary-only --fail-under-lines 60 | tee coverage.txt
           {
-            echo '### Coverage baseline'
+            echo '### Coverage'
             echo
             echo '```'
             cat coverage.txt
             echo '```'
             echo
-            echo '_Recorded, not gated._'
+            echo '_Gated at 60% lines — see the comment in ci.yml._'
           } >> "$GITHUB_STEP_SUMMARY"
 
   architecture:

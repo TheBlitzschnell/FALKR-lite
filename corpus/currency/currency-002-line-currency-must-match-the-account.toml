@@ -1,0 +1,77 @@
+[meta]
+id             = "currency-002-line-currency-must-match-the-account"
+title          = "A USD line posted to a EUR-denominated account must be refused"
+standards      = ["ASC 830-10-45-17"]
+phase          = "P02"
+difficulty     = 3
+status         = "divergent"
+divergence     = """
+The standard requires this to be refused: account 1010 is denominated in EUR, and
+a USD amount in it means an exchange rate was applied somewhere and recorded
+nowhere.
+
+Today's `LedgerAggregate` accepts it. The aggregate checks that an entry is
+internally single-currency, which this entry is — every line is USD — but it has
+no knowledge of accounts at all, so it cannot check a line against the currency
+its account is denominated in. `assertions::assert_currency_isolation` implements
+the third clause of invariant 5 and is exercised directly in tests/invariants.rs;
+what is missing is a chart of accounts for the posting engine to consult.
+
+Closed by P03, which introduces the chart of accounts and the account-level
+currency restriction.
+"""
+
+[setup]
+entity         = "EU_SUB"
+book           = "US_GAAP"
+functional_ccy = "EUR"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-01"
+description = "Subsidiary capitalisation, in the entity's functional currency"
+source = "MANUAL"
+lines = [
+    { account = "1010-Cash - EUR Account", debit = "80000.00" },
+    { account = "3000-Common Stock", credit = "80000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-15"
+description = "USD receipt misposted to the EUR bank account"
+source = "MANUAL"
+expect_rejection = true
+lines = [
+    { account = "1010-Cash - EUR Account", debit = "5000.00", currency = "USD" },
+    { account = "4000-Revenue", credit = "5000.00", currency = "USD" },
+]
+
+[expected.trial_balance]
+"1010-Cash - EUR Account"                    = "80000.00"
+"3000-Common Stock"                          = "-80000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The second entry is internally consistent — both lines are USD, and they balance —
+and it is still wrong, because account 1010 holds euros. Accepting it means the
+ledger now claims the euro bank account contains 5,000 of something, and no
+exchange rate exists anywhere in the record to say what.
+
+This is the failure mode the first two clauses of invariant 5 cannot see. "Every
+line matches the transaction currency" is satisfied. "The transaction is
+single-currency" is satisfied. Only the third clause — every line matches its
+*account's* currency — catches it.
+
+The expected trial balance is therefore the capitalisation entry alone: EUR cash
+80,000.00, common stock -80,000.00. The misposting contributes nothing, because
+it never should have been accepted.
+"""

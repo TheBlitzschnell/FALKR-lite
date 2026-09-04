@@ -1,0 +1,77 @@
+[meta]
+id             = "close-004-subledger-locked-gl-open"
+title          = "Posting into a period locked for AP but open for GL"
+standards      = ["PCAOB AS 2401.58", "COSO 2013 Principle 10"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-31"
+description = "March close adjustment posted directly to the GL"
+source = "CLOSE"
+lines = [
+    { account = "6300-General and Administrative", debit = "8000.00" },
+    { account = "2100-Accrued Liabilities", credit = "8000.00" },
+]
+
+[[operations]]
+kind = "lock_subledger"
+date = "2026-04-02"
+subledger = "AP"
+period = "2026-03"
+
+[[operations]]
+kind = "attempt_mutation"
+date = "2026-04-03"
+entry_point = "AP_INVOICE_ENTRY"
+period = "2026-03"
+expect = "REJECTED"
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-05"
+period = "2026-03"
+book = "US_GAAP"
+
+[expected.trial_balance]
+"2100-Accrued Liabilities"                   = "-8000.00"
+"6300-General and Administrative"            = "8000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A period is not a single switch. Subledgers lock on a staggered schedule during
+the close — AP first so vendor invoices stop moving, then AR, then the GL last so
+the accounting team can still post adjustments — and the state machine has to
+represent that or the close cannot happen at all.
+
+The sequence tested here:
+
+  31 Mar  GL open, AP open      close adjustment posts normally
+  02 Apr  AP locked, GL open    an AP invoice dated in March is refused
+  05 Apr  GL closed             nothing further posts to March
+
+The expected trial balance is the one adjustment: G&A 8,000.00, accrued
+liabilities -8,000.00. The refused AP entry contributes nothing, which is the
+assertion.
+
+The failure this pins against is a lock that is advisory — enforced in the UI, in
+one API handler, or by convention — rather than enforced at the point every
+posting path must pass through. Invariant 9 exists because the only way to know a
+lock holds is to enumerate every mutation entry point and prove each one refuses.
+
+Deferred to P04.
+"""

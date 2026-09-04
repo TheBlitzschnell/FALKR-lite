@@ -1,0 +1,85 @@
+[meta]
+id             = "adversarial-006-duplicate-invoice-number"
+title          = "The same invoice imported twice"
+standards      = ["PCAOB AS 2401.58"]
+phase          = "P02"
+difficulty     = 3
+status         = "divergent"
+divergence     = """
+The standard requires the second import to be refused. Every external ingestion
+path must be idempotent on the external ID: polling and webhooks can both
+deliver the same invoice, and a duplicate must never
+double-count cost or revenue.
+
+Today's `LedgerAggregate` accepts both entries and reports 200,000.00 of revenue
+where 100,000.00 occurred. There is no idempotency key on a journal entry — the
+entry header does not carry an external reference at all — so the aggregate has
+nothing to deduplicate on.
+
+Closed by P03, which lands the AS 2401 entry header including the external
+reference, and by the database-backed dedup that
+`tests/idempotency_pg.rs` already has a harness for.
+"""
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-04"
+description = "Invoice INV-9001 imported from the billing system"
+source = "IMPORT"
+ref = "inv-9001"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "100000.00" },
+    { account = "4000-Revenue", credit = "100000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-04"
+description = "Invoice INV-9001 delivered a second time by webhook"
+source = "IMPORT"
+ref = "inv-9001-dup"
+expect_rejection = true
+lines = [
+    { account = "1100-Accounts Receivable", debit = "100000.00" },
+    { account = "4000-Revenue", credit = "100000.00" },
+]
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "100000.00"
+"4000-Revenue"                               = "-100000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The same invoice arrives twice: once from the nightly poll, once from a webhook
+retry. Both entries balance perfectly, both are individually valid, and together
+they double the quarter's revenue.
+
+  Correct   receivable 100,000.00, revenue -100,000.00
+  Actual    receivable 200,000.00, revenue -200,000.00
+
+This is the failure mode that makes idempotency a correctness property rather than
+a performance one. Nothing about the second entry is malformed. No balance check
+catches it. No invariant about a single entry catches it. Only a check against
+what has already been ingested catches it, and that check has to live in the
+command handler — not in the API layer, where a second replica has its own memory,
+and not in an in-process map, which is empty after a restart.
+
+The expected trial balance above is the correct one. This codebase currently
+produces the wrong one, which is why the scenario is marked divergent: the corpus
+records what should happen, the test asserts that it currently does not, and the
+day somebody fixes it this scenario turns into a failure telling them to promote
+it to `ready`.
+"""

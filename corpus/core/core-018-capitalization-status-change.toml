@@ -1,0 +1,79 @@
+[meta]
+id             = "core-018-capitalization-status-change"
+title          = "Capitalize a run's costs after policy review"
+standards      = ["ASC 350-40-25-1", "ASC 730-10-25-1"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-10"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-10-05"
+description = "Q4 model development compute, expensed on receipt"
+source = "MANUAL"
+lines = [
+    { account = "6100-Research and Development", debit = "250000.00" },
+    { account = "2000-Accounts Payable", credit = "250000.00" },
+]
+
+[[operations]]
+kind = "set_capitalization"
+run = "run-alpha-7"
+to = "CAPITALIZED"
+policy = "asc-350-40-2026-v3"
+date = "2026-10-20"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-10-20"
+description = "Reclassify run-alpha-7 to capitalized internal-use software"
+source = "MANUAL"
+lines = [
+    { account = "1700-Capitalized Internal-Use Software", debit = "250000.00" },
+    { account = "6100-Research and Development", credit = "250000.00" },
+]
+
+[expected.trial_balance]
+"1700-Capitalized Internal-Use Software"     = "250000.00"
+"2000-Accounts Payable"                      = "-250000.00"
+"6100-Research and Development"              = "0.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Whether a run's compute is expensed or capitalised is the outcome of evaluating a
+policy, not a rule baked into code. ASC 350-40 is actively moving — ASU 2025-06
+changes the test itself — so the ledger records *which policy version produced
+this outcome*, and the outcome is reversible when the policy is reapplied.
+
+The sequence:
+
+  1. 250,000.00 of development compute is incurred and expensed to R&D by
+     default, which is the ASC 730-10-25-1 treatment for research and
+     experimentation.
+  2. Review under capitalisation policy `asc-350-40-2026-v3` concludes the
+     project passed the application-development threshold, and the run's status
+     changes from PENDING_REVIEW to CAPITALIZED. This is an event on the run, not
+     a journal entry: it changes no balance by itself.
+  3. The reclassification entry moves the 250,000.00 out of R&D and onto the
+     balance sheet.
+
+R&D therefore ends at 0.00 rather than disappearing, and the capitalised asset
+carries the full 250,000.00. Depreciation of it starts when the software is
+placed in service, which is assets-014, not here.
+
+The `policy_ref` on the status change is what makes the decision auditable: the
+question an auditor asks is not "is this capitalised" but "under which policy,
+and who decided".
+"""

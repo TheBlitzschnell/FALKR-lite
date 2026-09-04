@@ -1,0 +1,71 @@
+[meta]
+id             = "adversarial-005-double-reversal-rejected"
+title          = "Reversing an already-reversed entry is refused"
+standards      = ["PCAOB AS 2401.61"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Accrual to be reversed"
+source = "MANUAL"
+ref = "target"
+lines = [
+    { account = "6300-General and Administrative", debit = "4000.00" },
+    { account = "2100-Accrued Liabilities", credit = "4000.00" },
+]
+
+[[operations]]
+kind = "reverse_entry"
+ref = "target"
+date = "2026-05-10"
+reason = "First reversal"
+
+[[operations]]
+kind = "reverse_entry"
+ref = "target"
+date = "2026-05-11"
+reason = "Second reversal, must be refused"
+expect_rejection = true
+
+[expected.trial_balance]
+"2100-Accrued Liabilities"                   = "0.00"
+"6300-General and Administrative"            = "0.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Reversing the same entry twice would credit the expense a second time and leave a
+4,000.00 balance that no transaction produced.
+
+  Original     G&A +4,000.00, accrued -4,000.00
+  Reversal     G&A -4,000.00, accrued +4,000.00
+  Second       refused
+
+The aggregate tracks reversed entries in a `BTreeSet` in projected state, so the
+second command sees the first reversal and returns `AlreadyReversed`. Two things
+about that are load-bearing.
+
+First, it is a **stateful** validation: the command handler consults the projected
+state, which means the guarantee holds only if the aggregate was loaded from the
+complete event stream before the command was handled. A handler that validated
+against a stale or partial replay would let the second reversal through.
+
+Second, it is a `BTreeSet` rather than a `HashSet`. Iteration order of the
+projection has to be deterministic for invariant 3 to hold, and a `HashSet`
+anywhere in projected state would make two replays of the same log produce
+structurally different states — usually harmlessly, and once in a while not.
+"""

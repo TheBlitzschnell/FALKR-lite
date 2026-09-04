@@ -1,0 +1,42 @@
+# Reporting entities, and the consolidation tree they form.
+#
+# `parent` is the immediate parent; `ownership` is the parent's percentage where
+# it is not 100%. Two-tier ownership (US_PARENT -> IE_SUB -> IN_SUB) is
+# deliberate: the consolidation scenarios need a chain, not just a pair.
+
+[[entity]]
+code = "US_PARENT"
+name = "Falkr Inc."
+functional_ccy = "USD"
+
+[[entity]]
+code = "EU_SUB"
+name = "Falkr Europe GmbH"
+functional_ccy = "EUR"
+parent = "US_PARENT"
+
+[[entity]]
+code = "UK_SUB"
+name = "Falkr UK Ltd."
+functional_ccy = "GBP"
+parent = "US_PARENT"
+ownership = "0.80"
+
+[[entity]]
+code = "JP_SUB"
+name = "Falkr Japan KK"
+functional_ccy = "JPY"
+parent = "US_PARENT"
+
+[[entity]]
+code = "IE_SUB"
+name = "Falkr Ireland DAC"
+functional_ccy = "EUR"
+parent = "EU_SUB"
+
+[[entity]]
+code = "VIE_CO"
+name = "Compute Partner VIE"
+functional_ccy = "USD"
+parent = "US_PARENT"
+ownership = "0.00"

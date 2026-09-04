@@ -1,0 +1,70 @@
+[meta]
+id             = "currency-003-period-end-remeasurement"
+title          = "Period-end remeasurement of a monetary liability"
+standards      = ["ASC 830-20-35-1", "ASC 830-20-45-1"]
+phase          = "P05"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-10"
+description = "EUR 10,000 licence invoice at the 10 March spot rate of 1.0850"
+source = "MANUAL"
+lines = [
+    { account = "6700-Software Subscriptions", debit = "10850.00" },
+    { account = "2000-Accounts Payable", credit = "10850.00" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-03-31"
+pair = "EUR/USD"
+rate = "1.1020"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-03-31"
+book = "US_GAAP"
+source = "FX"
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-11020.00"
+"6700-Software Subscriptions"                = "10850.00"
+"7000-Foreign Exchange Gain or Loss"         = "170.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A euro payable in a USD-functional entity is a monetary item, so ASC 830-20-35-1
+requires it to be remeasured at each balance-sheet date, with the difference in
+income — not in equity.
+
+  Payable at 10 March   EUR 10,000.00 x 1.0850 = 10,850.00
+  Payable at 31 March   EUR 10,000.00 x 1.1020 = 11,020.00
+  Increase in the USD cost of settling            170.00
+
+The euro strengthened, so it now takes more dollars to pay the same euro debt.
+That is a loss: FX expense +170.00, payable -11,020.00 (a larger credit).
+
+The expense line is 10,850.00 and stays there. Remeasurement adjusts the monetary
+*balance*, never the original expense — the licence cost what it cost on the day
+it was contracted, and re-cutting that number every quarter would make the income
+statement a function of the exchange rate rather than of operations.
+
+Account 7000 is marked `allow_opposite_sign` in the corpus chart precisely
+because it swings both ways period to period, and a rule that expected a debit
+balance in an FX account would fire on every favourable quarter.
+"""

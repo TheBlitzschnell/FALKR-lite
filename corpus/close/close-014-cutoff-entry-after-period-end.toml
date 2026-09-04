@@ -1,0 +1,76 @@
+[meta]
+id             = "close-014-cutoff-entry-after-period-end"
+title          = "Cutoff: an entry dated in the period, posted after it"
+standards      = ["ASC 855-10-25-1", "PCAOB AS 2401.58"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-31"
+description = "March revenue recorded on time"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "500000.00" },
+    { account = "4000-Revenue", credit = "500000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-04-02"
+description = "Sale delivered 31 March, entered 2 April"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "45000.00" },
+    { account = "4000-Revenue", credit = "45000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-06"
+period = "2026-03"
+book = "US_GAAP"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "545000.00"
+"4000-Revenue"                               = "-545000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The entry dated 31 March and keyed on 2 April is not an error. Goods were
+transferred on 31 March, so ASC 606 puts the revenue in March; the two-day lag is
+data entry, and the period is still open.
+
+Both revenue figures therefore belong to March: 500,000.00 + 45,000.00 =
+545,000.00.
+
+What makes this scenario worth writing is the pair of dates it forces the entry
+header to carry. The AS 2401 attribute set carries `entry_date`, `effective_date`,
+`created_at` and `posted_at` as four distinct fields, and this is the case that
+shows why:
+
+  effective_date  31 March  — the period the transaction belongs to
+  created_at      2 April   — when a human keyed it
+  posted_at       2 April   — when it entered the log
+
+They diverge, and the gap between the first and the last is exactly what an
+auditor asks about. A ledger with one date field answers "March" or "April" and
+cannot answer "March, entered two days later, before the close". The entries most
+worth investigating are the ones where that gap is large, and a system that
+cannot compute the gap cannot rank them.
+
+Deferred to P04.
+"""

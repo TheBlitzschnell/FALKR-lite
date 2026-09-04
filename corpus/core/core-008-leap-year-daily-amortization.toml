@@ -1,0 +1,75 @@
+[meta]
+id             = "core-008-leap-year-daily-amortization"
+title          = "Daily prepaid amortization across a leap February"
+standards      = ["ASC 340-10-05-1"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2028-02"
+
+[[operations]]
+kind = "post_entry"
+date = "2028-01-01"
+description = "Annual D&O insurance premium invoiced"
+source = "MANUAL"
+lines = [
+    { account = "1400-Prepaid Expenses", debit = "36600.00" },
+    { account = "2000-Accounts Payable", credit = "36600.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2028-01-31"
+description = "January amortization, 31 days"
+source = "MANUAL"
+lines = [
+    { account = "6300-General and Administrative", debit = "3100.00" },
+    { account = "1400-Prepaid Expenses", credit = "3100.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2028-02-29"
+description = "February amortization, 29 days"
+source = "MANUAL"
+lines = [
+    { account = "6300-General and Administrative", debit = "2900.00" },
+    { account = "1400-Prepaid Expenses", credit = "2900.00" },
+]
+
+[expected.trial_balance]
+"1400-Prepaid Expenses"                      = "30600.00"
+"2000-Accounts Payable"                      = "-36600.00"
+"6300-General and Administrative"            = "6000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+2028 is a leap year: 366 days, and February has 29. A daily amortization
+convention that hardcodes 365, or a February that assumes 28, produces a wrong
+number in one month out of every forty-eight and a residual stub at year end that
+somebody writes off without understanding why.
+
+The premium is chosen so the daily rate is exact and the arithmetic is checkable
+by eye:
+
+  36,600.00 / 366 days = 100.00 per day
+  January   31 days x 100.00 = 3,100.00
+  February  29 days x 100.00 = 2,900.00
+  Consumed to 29 February      6,000.00
+  Prepaid remaining           30,600.00
+
+Note what a 365-day convention would give instead: 100.2739726... per day, a
+January charge of 3,108.49 and a February charge of 2,807.67, and a prepaid
+balance that never reaches zero on the anniversary.
+"""

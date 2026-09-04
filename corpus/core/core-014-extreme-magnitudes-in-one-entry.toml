@@ -1,0 +1,55 @@
+[meta]
+id             = "core-014-extreme-magnitudes-in-one-entry"
+title          = "Very large and very small amounts in one entry"
+standards      = ["ASC 105-10-05-1"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-07"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-07-15"
+description = "Datacenter build capitalised, with a rounding stub expensed"
+source = "MANUAL"
+lines = [
+    { account = "1500-Compute Equipment", debit = "999999999.99" },
+    { account = "6300-General and Administrative", debit = "0.01" },
+    { account = "2000-Accounts Payable", credit = "1000000000.00" },
+]
+
+[expected.trial_balance]
+"1500-Compute Equipment"                     = "999999999.99"
+"6300-General and Administrative"            = "0.01"
+"2000-Accounts Payable"                      = "-1000000000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A billion-dollar capital commitment and a one-cent stub in the same entry. The
+point is the ratio: 10^11 between the largest and smallest line, which is where a
+64-bit floating-point accumulator starts losing the small one.
+
+  999,999,999.99 + 0.01 = 1,000,000,000.00 exactly
+
+In IEEE-754 double precision, 999999999.99 is not representable, and the sum of
+the two literals is 1000000000.0000001 or 999999999.9999999 depending on the
+order of operations. Either way the entry does not balance, and the natural
+"fix" is a tolerance — at which point the ledger has a tolerance, and a tolerance
+is a hole that grows.
+
+`rust_decimal` represents both operands exactly and the sum exactly, so the entry
+balances to zero rather than to nearly zero. This scenario exists so that a
+future change to the numeric type fails here loudly rather than in production
+quietly.
+"""

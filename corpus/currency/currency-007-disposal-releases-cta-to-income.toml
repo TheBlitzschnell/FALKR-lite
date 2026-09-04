@@ -1,0 +1,80 @@
+[meta]
+id             = "currency-007-disposal-releases-cta-to-income"
+title          = "Disposal of a foreign operation releases CTA to income"
+standards      = ["ASC 830-30-40-1", "ASC 810-10-40-6"]
+phase          = "P05"
+difficulty     = 4
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-09"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-02"
+description = "Investment in the European subsidiary"
+source = "MANUAL"
+lines = [
+    { account = "1800-Investment in Subsidiary", debit = "105000.00" },
+    { account = "1000-Cash", credit = "105000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Accumulated translation adjustment on the investment"
+source = "FX"
+lines = [
+    { account = "1800-Investment in Subsidiary", debit = "5400.00" },
+    { account = "3300-Cumulative Translation Adjustment", credit = "5400.00" },
+]
+
+[[operations]]
+kind = "release_cta"
+date = "2026-09-30"
+entity = "EU_SUB"
+proceeds = "120000.00"
+source = "FX"
+
+[expected.trial_balance]
+"1000-Cash"                                  = "15000.00"
+"1800-Investment in Subsidiary"              = "0.00"
+"3300-Cumulative Translation Adjustment"     = "0.00"
+"7200-Gain or Loss on Disposal"              = "-15000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+CTA sits in equity for as long as the investment is held, and on complete
+disposal ASC 830-30-40-1 requires it to be recycled into the gain or loss. It is
+the one item of other comprehensive income that most people forget to release,
+and forgetting it understates the gain by exactly the accumulated CTA.
+
+  Carrying amount of the investment   105,000.00 + 5,400.00 = 110,400.00
+  Proceeds                                                    120,000.00
+  Gain before CTA release             120,000 - 110,400     =   9,600.00
+  CTA released to income                                        5,400.00
+                                                              -----------
+  Total gain recognised                                        15,000.00
+
+The disposal entry:
+
+  Debit  cash                              120,000.00
+  Credit investment in subsidiary          110,400.00
+  Debit  cumulative translation adjustment   5,400.00   (clearing equity)
+  Credit gain or loss on disposal           15,000.00
+
+Cash: -105,000.00 paid on acquisition + 120,000.00 received = 15,000.00.
+
+Note the shape of the check: total gain equals proceeds minus the *original*
+dollars invested (120,000 - 105,000 = 15,000), which is the economically true
+answer. The CTA release is what makes the accounting arrive at it.
+"""

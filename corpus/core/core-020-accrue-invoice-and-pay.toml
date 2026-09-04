@@ -1,0 +1,88 @@
+[meta]
+id             = "core-020-accrue-invoice-and-pay"
+title          = "Accrue, receive the invoice, then pay"
+standards      = ["ASC 450-20-25-2"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-11"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-11-01"
+description = "Opening capital"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "20000.00" },
+    { account = "3000-Common Stock", credit = "20000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-11-30"
+description = "Accrue audit fee for work performed in November"
+source = "CLOSE"
+lines = [
+    { account = "6800-Professional Fees", debit = "7500.00" },
+    { account = "2100-Accrued Liabilities", credit = "7500.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-12-08"
+description = "Invoice received; reclassify accrual to accounts payable"
+source = "MANUAL"
+lines = [
+    { account = "2100-Accrued Liabilities", debit = "7500.00" },
+    { account = "2000-Accounts Payable", credit = "7500.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-12-20"
+description = "Payment"
+source = "MANUAL"
+lines = [
+    { account = "2000-Accounts Payable", debit = "7500.00" },
+    { account = "1000-Cash", credit = "7500.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "12500.00"
+"2000-Accounts Payable"                      = "0.00"
+"2100-Accrued Liabilities"                   = "0.00"
+"3000-Common Stock"                          = "-20000.00"
+"6800-Professional Fees"                     = "7500.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Three separate events, three separate entries, and the expense is recognised at
+the first of them.
+
+The work was performed in November, so the obligation is probable and the amount
+reasonably estimable at 30 November, which is ASC 450-20-25-2's accrual test.
+Waiting for the invoice would push the expense into December and misstate both
+months.
+
+  30 Nov  professional fees +7,500.00, accrued liabilities -7,500.00
+  08 Dec  accrued liabilities +7,500.00, accounts payable -7,500.00
+  20 Dec  accounts payable +7,500.00, cash -7,500.00
+
+  Ending: cash 20,000.00 - 7,500.00 = 12,500.00
+          accrual 0.00, payable 0.00, expense 7,500.00 recognised once
+
+The reclassification from accrual to payable changes no total and no expense; it
+moves the liability from an estimate to a documented obligation, which is a
+distinction the balance sheet makes and the income statement does not.
+"""

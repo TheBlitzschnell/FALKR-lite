@@ -1,0 +1,89 @@
+[meta]
+id             = "close-006-reopen-adjust-and-reclose"
+title          = "Period reopened, adjusted, and re-closed"
+standards      = ["PCAOB AS 2401.58"]
+phase          = "P04"
+difficulty     = 4
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-31"
+description = "March revenue"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "200000.00" },
+    { account = "4000-Revenue", credit = "200000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-05"
+period = "2026-03"
+book = "US_GAAP"
+
+[[operations]]
+kind = "reopen_period"
+date = "2026-04-12"
+period = "2026-03"
+book = "US_GAAP"
+approved_by = "CFO"
+reason = "Material vendor accrual omitted from the close"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-04-12"
+description = "Omitted vendor accrual"
+source = "CLOSE"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "62000.00" },
+    { account = "2100-Accrued Liabilities", credit = "62000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-13"
+period = "2026-03"
+book = "US_GAAP"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "200000.00"
+"2100-Accrued Liabilities"                   = "-62000.00"
+"4000-Revenue"                               = "-200000.00"
+"5000-Cost of Revenue - Inference Compute"   = "62000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Reopening is the heavier alternative to a post-close adjustment, and the choice
+between them is a real one: an adjustment leaves the close intact and flags the
+entry; a reopen returns the period to a normal posting state and requires
+re-closing it.
+
+  05 Apr  closed
+  12 Apr  reopened by the CFO, with a recorded reason
+  12 Apr  accrual posted through the ordinary path
+  13 Apr  re-closed
+
+The audit trail must show all four events, in order, with the approver on the
+reopen. A period whose state machine only records "closed" cannot distinguish a
+period closed once from a period closed, reopened and closed again — and the
+second is a control finding while the first is routine.
+
+The trial balance is unremarkable, which is the point: the accounting is a normal
+accrual. What the scenario tests is that the *sequence* is possible, recorded,
+and requires an approval the system can produce on demand.
+
+Deferred to P04.
+"""

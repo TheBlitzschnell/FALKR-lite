@@ -1,0 +1,83 @@
+[meta]
+id             = "adversarial-015-zero-amount-line"
+title          = "A journal line for zero"
+standards      = ["PCAOB AS 2401.58"]
+phase          = "P02"
+difficulty     = 2
+status         = "divergent"
+divergence     = """
+The standard requires a zero-amount line to be refused: it carries no information,
+consumes a line number, appears in the AICPA GL detail export, and is what a
+partially-populated import produces.
+
+Today's `LedgerAggregate` accepts it. `JournalLine::validate` checks that exactly
+one of debit/credit is populated, not that the populated one is non-zero, so
+`debit: Some(0.00)` passes and the entry balances.
+
+The judgement here is genuinely arguable — some ledgers post zero lines
+deliberately, to record that an account was considered and found to have no
+activity. If that is the decision, this scenario should be deleted rather than
+promoted. What is not arguable is that the behaviour should be *chosen*, and today
+it is a consequence of where the validation stops.
+
+Closed by P03, which owns the posting engine's line-level validation.
+"""
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Valid sale"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "800.00" },
+    { account = "4000-Revenue", credit = "800.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Entry carrying a zero line"
+source = "MANUAL"
+expect_rejection = true
+lines = [
+    { account = "1000-Cash", debit = "200.00" },
+    { account = "9100-Suspense", debit = "0.00" },
+    { account = "4000-Revenue", credit = "200.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "800.00"
+"4000-Revenue"                               = "-800.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The second entry balances — 200.00 of debits against 200.00 of credits, with a
+zero line in the middle — and it should still be refused.
+
+  Correct   cash 800.00, revenue -800.00
+  Actual    cash 1,000.00, revenue -1,000.00, suspense 0.00
+
+A zero line is not harmless. It appears in the journal-entry population an auditor
+requests, it consumes a line number in the GL detail export, and it is the visible
+symptom of a mapping that produced no amount — the import equivalent of a null
+that got coerced.
+
+The scenario is marked divergent rather than ready: the corpus records the
+expected behaviour, the test asserts that this codebase currently does something
+else, and the divergence note carries the argument on both sides so whoever
+resolves it in P03 is making a decision rather than fixing a bug they do not
+understand.
+"""

@@ -1,0 +1,83 @@
+[meta]
+id             = "currency-012-monetary-versus-nonmonetary"
+title          = "Monetary items remeasure; non-monetary ones do not"
+standards      = ["ASC 830-10-45-17", "ASC 830-10-20"]
+phase          = "P05"
+difficulty     = 4
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-06"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-01"
+description = "EUR 200,000 GPU cluster purchased and paid at 1.0500"
+source = "MANUAL"
+lines = [
+    { account = "1500-Compute Equipment", debit = "210000.00" },
+    { account = "2000-Accounts Payable", credit = "210000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-02-01"
+description = "EUR 60,000 prepaid support, paid at 1.0500"
+source = "MANUAL"
+lines = [
+    { account = "1400-Prepaid Expenses", debit = "63000.00" },
+    { account = "2000-Accounts Payable", credit = "63000.00" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "EUR/USD"
+rate = "1.1500"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-06-30"
+book = "US_GAAP"
+source = "FX"
+
+[expected.trial_balance]
+"1400-Prepaid Expenses"                      = "63000.00"
+"1500-Compute Equipment"                     = "210000.00"
+"2000-Accounts Payable"                      = "-299000.00"
+"7000-Foreign Exchange Gain or Loss"         = "26000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The classification that decides everything: a monetary item is a claim to a fixed
+number of currency units, and a non-monetary item is not. Only monetary items are
+remeasured.
+
+  Compute equipment   non-monetary  stays at the 1 February historical rate
+  Prepaid support     non-monetary  stays at the 1 February historical rate
+  Accounts payable    monetary      remeasured at the 30 June rate
+
+  Payable at 1 February  EUR 260,000 x 1.0500 = 273,000.00
+  Payable at 30 June     EUR 260,000 x 1.1500 = 299,000.00
+  FX loss                                        26,000.00
+
+The equipment cost 210,000.00 dollars and will cost 210,000.00 dollars forever;
+what a euro is worth in June has nothing to do with what was paid for a machine
+in February. The same reasoning makes prepaid support non-monetary: it is a right
+to receive a *service*, not a fixed number of euros.
+
+The error this pins against is remeasuring everything with a euro attached, which
+would restate the asset to 239,000.00 and book a 29,000.00 gain that has not
+occurred and never will. Getting the monetary/non-monetary split wrong is the
+most common ASC 830 mistake, and it moves both the balance sheet and income.
+"""

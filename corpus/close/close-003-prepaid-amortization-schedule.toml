@@ -1,0 +1,75 @@
+[meta]
+id             = "close-003-prepaid-amortization-schedule"
+title          = "Prepaid amortisation schedule across three periods"
+standards      = ["ASC 340-10-05-1"]
+phase          = "P04"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-01"
+description = "Twelve-month platform licence prepaid"
+source = "MANUAL"
+lines = [
+    { account = "1400-Prepaid Expenses", debit = "54000.00" },
+    { account = "2000-Accounts Payable", credit = "54000.00" },
+]
+
+[[operations]]
+kind = "amortize_prepaid"
+date = "2026-01-31"
+schedule = "PREPAID-2026-001"
+period = "2026-01"
+
+[[operations]]
+kind = "amortize_prepaid"
+date = "2026-02-28"
+schedule = "PREPAID-2026-001"
+period = "2026-02"
+
+[[operations]]
+kind = "amortize_prepaid"
+date = "2026-03-31"
+schedule = "PREPAID-2026-001"
+period = "2026-03"
+
+[expected.trial_balance]
+"1400-Prepaid Expenses"                      = "40500.00"
+"2000-Accounts Payable"                      = "-54000.00"
+"6700-Software Subscriptions"                = "13500.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A schedule, not a series of manual entries. The distinction is operational rather
+than accounting: three manual entries and a twelve-line schedule produce the same
+numbers, and only one of them still produces the right numbers in month nine when
+the person who created it has left.
+
+  Prepaid                          54,000.00
+  Term                             12 months
+  Monthly amortisation             54,000.00 / 12 = 4,500.00
+  Amortised through 31 March       3 x 4,500.00   = 13,500.00
+  Prepaid remaining                54,000.00 - 13,500.00 = 40,500.00
+
+The schedule is the source of truth and each period's entry is derived from it,
+which means the remaining prepaid balance is always reconcilable to the sum of
+the schedule's unamortised rows. That reconciliation is invariant 7 applied to
+prepaid expenses — a subledger tying to its control account — and it is how a
+stranded prepaid balance is found before an auditor finds it.
+
+Deferred to P04, which delivers the schedule and the period-close job that runs
+it.
+"""

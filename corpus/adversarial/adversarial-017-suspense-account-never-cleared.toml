@@ -1,0 +1,69 @@
+[meta]
+id             = "adversarial-017-suspense-account-never-cleared"
+title          = "A suspense balance that survives the period"
+standards      = ["PCAOB AS 2401.58", "COSO 2013 Principle 12"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-08"
+description = "Unidentified bank receipt"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "17500.00" },
+    { account = "9100-Suspense", credit = "17500.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-22"
+description = "Second unidentified receipt"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "4300.00" },
+    { account = "9100-Suspense", credit = "4300.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "21800.00"
+"9100-Suspense"                              = "-21800.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Two receipts arrive that cannot be matched to a customer. Parking them in suspense
+is the correct immediate treatment — the cash is real and has to be recorded — and
+leaving them there is not.
+
+  Receipt 1                17,500.00
+  Receipt 2                 4,300.00
+  Suspense at period end   21,800.00 credit
+
+The scenario is `ready`, the entries are valid, and every invariant passes. What
+makes it adversarial is that a passing test is exactly the problem: **a suspense
+balance is a control failure that no accounting rule refuses.**
+
+So the check has to be a different kind. Suspense is a defined account in the
+corpus chart with `allow_opposite_sign`, which means it is expected to carry either
+sign and cannot be caught by invariant 4. What catches it is an aging rule — a
+suspense item older than N days is escalated — and that rule belongs in the close
+checklist, in P04, not in the posting engine.
+
+Recorded here so P04 inherits it as a requirement rather than discovering it when
+a year-old 21,800.00 credit has to be explained. The realistic failure is not that
+somebody parks a receipt in suspense; it is that nobody ever looks at the account
+again, and its balance is a fair proxy for how well a close is actually run.
+"""

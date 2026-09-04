@@ -1,0 +1,100 @@
+[meta]
+id             = "currency-006-translation-of-a-foreign-subsidiary"
+title          = "Translating a foreign subsidiary produces a CTA plug"
+standards      = ["ASC 830-30-45-3", "ASC 830-30-45-12"]
+phase          = "P05"
+difficulty     = 4
+
+[setup]
+entity         = "EU_SUB"
+book           = "US_GAAP"
+functional_ccy = "EUR"
+period         = "2026-06"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-02"
+description = "Subsidiary capitalised with EUR 100,000"
+source = "MANUAL"
+lines = [
+    { account = "1010-Cash - EUR Account", debit = "100000.00" },
+    { account = "3000-Common Stock", credit = "100000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-06-30"
+description = "Half-year subsidiary profit, settled in cash"
+source = "MANUAL"
+lines = [
+    { account = "1010-Cash - EUR Account", debit = "20000.00" },
+    { account = "4000-Revenue", credit = "20000.00" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-01-02"
+pair = "EUR/USD"
+rate = "1.0500"
+rate_type = "HISTORICAL"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "EUR/USD"
+rate = "1.1000"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-06-30"
+pair = "EUR/USD"
+rate = "1.0800"
+rate_type = "AVERAGE"
+
+[[operations]]
+kind = "translate_entity"
+date = "2026-06-30"
+entity = "EU_SUB"
+reporting_currency = "USD"
+source = "FX"
+
+[expected.trial_balance]
+"1010-Cash - EUR Account"                    = "132000.00"
+"3000-Common Stock"                          = "-105000.00"
+"4000-Revenue"                               = "-21600.00"
+"3300-Cumulative Translation Adjustment"     = "-5400.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Translation, not remeasurement. The subsidiary's functional currency is EUR and
+the group reports in USD, so ASC 830-30-45-3 applies three different rates to
+three different things, and the difference is a plug that goes to equity rather
+than to income.
+
+  Assets and liabilities   current rate      1.1000
+  Equity                   historical rate   1.0500
+  Income statement         average rate      1.0800
+
+  Cash        EUR 120,000 x 1.1000 = 132,000.00
+  Common stock EUR 100,000 x 1.0500 = 105,000.00 credit
+  Revenue      EUR  20,000 x 1.0800 =  21,600.00 credit
+                                       -----------
+  CTA plug     132,000 - 105,000 - 21,600 = 5,400.00 credit
+
+The CTA is not an error term to be minimised; it is the arithmetic consequence of
+translating a balance sheet at one rate and the income that built it at another,
+and it is *required* to be there. A translation that produces no CTA has almost
+certainly applied one rate to everything.
+
+Critically, the 5,400.00 does not touch income. It sits in accumulated other
+comprehensive income until the investment in this subsidiary is disposed of,
+which is currency-007.
+"""

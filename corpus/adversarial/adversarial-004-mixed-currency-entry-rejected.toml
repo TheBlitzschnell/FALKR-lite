@@ -1,0 +1,63 @@
+[meta]
+id             = "adversarial-004-mixed-currency-entry-rejected"
+title          = "A mixed-currency entry is refused"
+standards      = ["ASC 830-10-45-17"]
+phase          = "P02"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Valid USD sale"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "1500.00" },
+    { account = "4000-Revenue", credit = "1500.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "USD debit against a EUR credit"
+source = "MANUAL"
+expect_rejection = true
+lines = [
+    { account = "1000-Cash", debit = "1000.00", currency = "USD" },
+    { account = "4000-Revenue", credit = "1000.00", currency = "EUR" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "1500.00"
+"4000-Revenue"                               = "-1500.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+1,000 dollars is not 1,000 euros, and an entry that treats them as equal has
+applied an exchange rate of exactly 1.0000 without recording that it did.
+
+`Money::checked_add` refuses to sum across currencies, so the balance check in the
+command handler cannot even compute a total for this entry and returns a currency
+mismatch. That is the type system doing the work: there is no `impl Add for Money`
+at all, so the mistake is difficult to make even deliberately.
+
+  Accepted   cash +1,500.00, revenue -1,500.00
+  Rejected   the mixed-currency entry contributes nothing
+
+The FX conversion this entry is trying to smuggle in has to happen *before* the
+entry exists, at a recorded rate, producing a single-currency posting — which is
+currency-001. Invariant 5 is the general statement, and this is the specific case
+the aggregate already enforces today.
+"""

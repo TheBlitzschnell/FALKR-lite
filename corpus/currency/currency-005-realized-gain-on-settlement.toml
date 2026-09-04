@@ -1,0 +1,90 @@
+[meta]
+id             = "currency-005-realized-gain-on-settlement"
+title          = "Realised FX gain when a payable settles at a different rate"
+standards      = ["ASC 830-20-35-2"]
+phase          = "P05"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Opening capital"
+source = "MANUAL"
+lines = [
+    { account = "1000-Cash", debit = "50000.00" },
+    { account = "3000-Common Stock", credit = "50000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-05"
+description = "EUR 20,000 compute invoice at 1.1000"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "22000.00" },
+    { account = "2000-Accounts Payable", credit = "22000.00" },
+]
+
+[[operations]]
+kind = "set_fx_rate"
+date = "2026-05-28"
+pair = "EUR/USD"
+rate = "1.0750"
+rate_type = "SPOT"
+
+[[operations]]
+kind = "settle_balance"
+date = "2026-05-28"
+account = "2000-Accounts Payable"
+foreign_amount = "20000.00"
+foreign_currency = "EUR"
+rate = "1.0750"
+settled_from = "1000-Cash"
+source = "FX"
+
+[expected.trial_balance]
+"1000-Cash"                                  = "28500.00"
+"2000-Accounts Payable"                      = "0.00"
+"3000-Common Stock"                          = "-50000.00"
+"5000-Cost of Revenue - Inference Compute"   = "22000.00"
+"7010-Realized FX Gain or Loss"              = "-500.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The difference between remeasurement and realisation: an unrealised movement is
+an estimate that will change again, and a realised one is cash that has actually
+moved.
+
+  Invoice   EUR 20,000 x 1.1000 = 22,000.00 recorded as payable
+  Payment   EUR 20,000 x 1.0750 = 21,500.00 actually paid
+                                  ----------
+  Realised gain                        500.00
+
+The entry settles the payable at its carrying amount and the cash at what was
+actually spent, with the difference to realised FX:
+
+  Debit  accounts payable            22,000.00
+  Credit cash                        21,500.00
+  Credit realised FX gain or loss       500.00
+
+Cash: 50,000.00 - 21,500.00 = 28,500.00.
+
+Realised and unrealised FX are kept in separate accounts (7010 and 7000) because
+they answer different questions. Unrealised is a mark-to-market that may reverse;
+realised is a cash outcome that cannot. A single combined account makes it
+impossible to tell an analyst which is which, and that is the first question they
+ask.
+"""

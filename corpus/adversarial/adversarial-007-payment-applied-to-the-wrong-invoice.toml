@@ -1,0 +1,86 @@
+[meta]
+id             = "adversarial-007-payment-applied-to-the-wrong-invoice"
+title          = "Payment applied to the wrong invoice"
+standards      = ["ASC 310-10-05-4", "PCAOB AS 2401.58"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-01"
+description = "Invoice A to customer 1"
+source = "MANUAL"
+ref = "invoice-a"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "30000.00" },
+    { account = "4000-Revenue", credit = "30000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-02"
+description = "Invoice B to customer 2"
+source = "MANUAL"
+ref = "invoice-b"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "45000.00" },
+    { account = "4000-Revenue", credit = "45000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-20"
+description = "Customer 1's payment applied against invoice B"
+source = "MANUAL"
+ref = "misapplied"
+lines = [
+    { account = "1000-Cash", debit = "30000.00" },
+    { account = "1100-Accounts Receivable", credit = "30000.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "30000.00"
+"1100-Accounts Receivable"                   = "45000.00"
+"4000-Revenue"                               = "-75000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The general ledger is **perfectly correct** and the business is wrong. That is
+what makes this scenario worth writing.
+
+  Invoice A         30,000.00 to customer 1
+  Invoice B         45,000.00 to customer 2
+  Cash received     30,000.00 from customer 1
+  Applied to        invoice B
+
+  GL: cash 30,000.00, receivable 45,000.00, revenue -75,000.00   -- all correct
+
+Every invariant that looks at the GL passes. The trial balance is zero, the entry
+balances, the receivable control account is right to the cent. And customer 1 is
+about to receive a dunning letter for an invoice they paid, while customer 2's
+balance shows a payment they never made.
+
+The error is only visible in the **subledger**, where the AR aging by customer no
+longer matches reality. Invariant 7 ties the aging *total* to the control
+account, and that total is unaffected by moving 30,000.00 between two customers —
+so invariant 7 passes too.
+
+That is the honest lesson of this scenario: a GL-level corpus cannot catch this
+class of error, and a subledger that only reconciles in total is not reconciling.
+The check that catches it is per-counterparty, and it belongs in P07 alongside
+the aging. Written down here so that P07 knows it is expected to catch something
+that today's invariants structurally cannot.
+"""

@@ -1,0 +1,59 @@
+[meta]
+id             = "core-006-void-an-unposted-entry"
+title          = "Void a draft entry before it posts"
+standards      = ["PCAOB AS 2401.61"]
+phase          = "P03"
+difficulty     = 2
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-11"
+description = "Consulting revenue recognised on delivery"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "750.00" },
+    { account = "4040-Implementation Revenue", credit = "750.00" },
+]
+
+[[operations]]
+kind = "void_entry"
+ref = "draft-2026-03-002"
+date = "2026-03-11"
+reason = "Keyed against the wrong customer; caught in review before posting"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "750.00"
+"4040-Implementation Revenue"                = "-750.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+Voiding and reversing are different operations and conflating them loses
+information an auditor asks for directly.
+
+A *reversal* (core-005) undoes an entry that was posted: two entries exist in the
+population, and both appear in the journal-entry listing. A *void* discards an
+entry that was drafted and never posted: it must leave no effect on any balance,
+but the attempt itself has to remain visible, because "entries that were prepared
+and then discarded" is a population AS 2401 cares about — it is where an override
+of controls shows up.
+
+So the expected trial balance here is exactly the valid entry and nothing else:
+AR +750.00, implementation revenue -750.00. The voided draft contributes zero.
+
+Deferred to P03, which introduces the entry lifecycle (draft, posted, voided).
+Today an entry is posted the instant the command is accepted, so there is no
+draft state to void.
+"""

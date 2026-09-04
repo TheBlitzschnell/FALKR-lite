@@ -1,0 +1,71 @@
+[meta]
+id             = "adversarial-009-back-dated-entry-into-a-closed-period"
+title          = "Back-dated entry into a closed period"
+standards      = ["PCAOB AS 2401.58"]
+phase          = "P04"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-03"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-03-20"
+description = "Ordinary March entry"
+source = "MANUAL"
+lines = [
+    { account = "6300-General and Administrative", debit = "7000.00" },
+    { account = "2000-Accounts Payable", credit = "7000.00" },
+]
+
+[[operations]]
+kind = "close_period"
+date = "2026-04-05"
+period = "2026-03"
+book = "US_GAAP"
+
+[[operations]]
+kind = "attempt_mutation"
+date = "2026-04-20"
+entry_point = "POST_JOURNAL_ENTRY"
+effective_date = "2026-03-25"
+period = "2026-03"
+expect = "REJECTED"
+
+[expected.trial_balance]
+"2000-Accounts Payable"                      = "-7000.00"
+"6300-General and Administrative"            = "7000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+An entry dated 25 March, keyed on 20 April, after March closed on the 5th. It must
+be refused through the ordinary posting path.
+
+The distinction from close-014 is the close. There, an entry dated 31 March and
+keyed on 2 April was accepted because the period was still open, and the four
+distinct date fields recorded the two-day lag. Here the period is closed, and the
+same shape of entry is a control failure.
+
+  Accepted   the March entry, posted while March was open
+  Rejected   the back-dated entry, posted after the close
+
+The legitimate route for a genuine March item discovered in April is the
+post-close adjustment (close-005): a distinct, privileged operation that requires
+an approver and flags the entry. Refusing the ordinary path is what makes the
+privileged path meaningful — if both work, nobody uses the one that leaves an
+audit trail.
+
+Invariant 9 is the general form, and its hardest requirement is completeness: the
+enumeration of mutation entry points has to be exhaustive, because a single
+un-enumerated path makes the whole control decorative.
+"""

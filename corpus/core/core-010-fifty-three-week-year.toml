@@ -1,0 +1,75 @@
+[meta]
+id             = "core-010-fifty-three-week-year"
+title          = "53-week fiscal year, five-week final period"
+standards      = ["ASC 270-10-45-1"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-P13"
+calendar       = "53-week"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-01-05"
+description = "Annual reserved GPU capacity prepaid, 53 weeks"
+source = "MANUAL"
+lines = [
+    { account = "1410-Prepaid Compute", debit = "92750.00" },
+    { account = "2000-Accounts Payable", credit = "92750.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-11-29"
+description = "Period 12 consumption, 4 weeks"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "7000.00" },
+    { account = "1410-Prepaid Compute", credit = "7000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2027-01-03"
+description = "Period 13 consumption, 5 weeks"
+source = "MANUAL"
+lines = [
+    { account = "5000-Cost of Revenue - Inference Compute", debit = "8750.00" },
+    { account = "1410-Prepaid Compute", credit = "8750.00" },
+]
+
+[expected.trial_balance]
+"1410-Prepaid Compute"                       = "77000.00"
+"2000-Accounts Payable"                      = "-92750.00"
+"5000-Cost of Revenue - Inference Compute"   = "15750.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+A 52-week fiscal year drifts against the calendar by one or two days annually, so
+roughly every fifth or sixth year carries a 53rd week. That week has to land in
+some period, conventionally the last, which makes period 13 five weeks long
+instead of four.
+
+  92,750.00 over 53 weeks = 1,750.00 per week
+  Period 12  4 weeks x 1,750.00 = 7,000.00
+  Period 13  5 weeks x 1,750.00 = 8,750.00
+  Consumed across the two periods 15,750.00
+  Prepaid remaining               77,000.00
+
+The two failure modes this catches are a period-13 charge of 7,000.00 (dividing
+by 13 periods and ignoring the extra week) and a year-over-year comparison that
+treats period 13 of a 53-week year as comparable to period 13 of a 52-week one.
+The second is not an accounting error, but it is the one that gets reported to a
+board.
+"""

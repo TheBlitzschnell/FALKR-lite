@@ -1,0 +1,74 @@
+[meta]
+id             = "currency-010-non-exchangeable-currency"
+title          = "A currency that becomes non-exchangeable"
+standards      = ["IAS 21.8A", "IAS 21.19A", "IAS 21.A2"]
+phase          = "P05"
+difficulty     = 5
+
+[setup]
+entity         = "US_PARENT"
+book           = "IFRS"
+functional_ccy = "USD"
+period         = "2026-09"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-07-01"
+description = "Receivable from a customer in a newly restricted market"
+source = "MANUAL"
+lines = [
+    { account = "1100-Accounts Receivable", debit = "250000.00" },
+    { account = "4000-Revenue", credit = "250000.00" },
+]
+
+[[operations]]
+kind = "mark_currency_non_exchangeable"
+date = "2026-09-30"
+currency = "XXX"
+last_official_rate = "4.0000"
+estimated_rate = "6.2500"
+technique = "OBSERVABLE_PARALLEL_MARKET"
+source = "FX"
+
+[[operations]]
+kind = "revalue_monetary"
+date = "2026-09-30"
+book = "IFRS"
+source = "FX"
+
+[expected.trial_balance]
+"1100-Accounts Receivable"                   = "160000.00"
+"4000-Revenue"                               = "-250000.00"
+"7000-Foreign Exchange Gain or Loss"         = "90000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The 2023 amendments to IAS 21, effective for annual periods beginning on or after
+1 January 2025, added the case nobody had rules for: a currency that cannot be
+exchanged at all. When exchangeability is lacking, IAS 21.19A requires the entity
+to *estimate* the spot rate — the rate at which an orderly exchange transaction
+would occur — rather than continue using an official rate that no one can
+transact at.
+
+  Receivable recorded at the official rate  1,000,000 XXX / 4.0000 = 250,000.00
+  Estimated rate at 30 September                                     6.2500
+  Receivable remeasured                     1,000,000 XXX / 6.2500 = 160,000.00
+  Loss on remeasurement                                               90,000.00
+
+This is a US GAAP-shaped ledger being asked an IFRS question, which is why
+`book = "IFRS"`. US GAAP has no direct equivalent; ASC 830 assumes a rate exists.
+Running the same facts through both books and getting different answers is the
+point of having books at all, and it is why the book is a dimension of the trial
+balance rather than a reporting-time filter.
+
+Two things must be recorded beyond the number: the estimation technique, and the
+fact that exchangeability was assessed and found lacking. IAS 21.A2 requires both
+to be disclosed, and neither can be reconstructed from the journal entry.
+"""

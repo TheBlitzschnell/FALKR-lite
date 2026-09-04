@@ -1,0 +1,74 @@
+[meta]
+id             = "adversarial-008-out-of-balance-import"
+title          = "A bulk import whose lines do not sum"
+standards      = ["PCAOB AS 2401.58"]
+phase          = "P02"
+difficulty     = 3
+
+[setup]
+entity         = "US_PARENT"
+book           = "US_GAAP"
+functional_ccy = "USD"
+period         = "2026-05"
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-06"
+description = "Prior-system opening balances imported"
+source = "IMPORT"
+lines = [
+    { account = "1000-Cash", debit = "125000.00" },
+    { account = "1100-Accounts Receivable", debit = "48000.00" },
+    { account = "2000-Accounts Payable", credit = "31000.00" },
+    { account = "3200-Retained Earnings", credit = "142000.00" },
+]
+
+[[operations]]
+kind = "post_entry"
+date = "2026-05-06"
+description = "Second import batch, one line truncated in transit"
+source = "IMPORT"
+expect_rejection = true
+lines = [
+    { account = "1000-Cash", debit = "90000.00" },
+    { account = "1100-Accounts Receivable", debit = "12000.00" },
+    { account = "3200-Retained Earnings", credit = "90000.00" },
+]
+
+[expected.trial_balance]
+"1000-Cash"                                  = "125000.00"
+"1100-Accounts Receivable"                   = "48000.00"
+"2000-Accounts Payable"                      = "-31000.00"
+"3200-Retained Earnings"                     = "-142000.00"
+
+[expected.invariants]
+balanced                 = true
+replay_stable            = true
+subledger_ties           = false
+roll_forward             = false
+intercompany_eliminated  = false
+
+[expected.notes]
+reasoning = """
+The first batch balances: 125,000.00 + 48,000.00 = 173,000.00 debits against
+31,000.00 + 142,000.00 = 173,000.00 credits.
+
+The second lost a line somewhere between the source system and here — a truncated
+file, a partial page of results, a row that failed a foreign key. It presents
+102,000.00 of debits against 90,000.00 of credits and is refused.
+
+  Accepted   the four-line opening balance
+  Rejected   the 12,000.00-out batch
+
+The important design point is *where* the rejection happens: at the entry, not at
+the batch. An import that validated the batch total and then wrote entries
+individually would accept a batch that nets to zero overall while containing
+individually unbalanced entries — which is the same defect one level up, and
+harder to find because the trial balance still ties.
+
+The temptation this pins against is the suspense account: post the 12,000.00
+difference to 9100 and reconcile it later. That converts a loud, immediate
+failure into a balance that somebody has to investigate months later without the
+source file. Account 9100 exists in the chart for genuine unidentified receipts,
+not for making imports balance.
+"""
